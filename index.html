@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>事项跟进管理系统</title>
+    <link rel="stylesheet" href="styles.css?v=6">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 头部 -->
+        <header class="app-header">
+            <h1 class="app-title">
+                <span class="app-title-icon">📋</span>
+                事项跟进管理系统
+            </h1>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <span id="conn-indicator" title="连接状态" style="font-size:18px; cursor:default;">🟡</span>
+                <button id="refresh-btn" class="btn btn-secondary" title="刷新数据" onclick="App.refresh()">🔄 刷新</button>
+                <button id="add-btn" class="btn btn-primary">+ 添加事项</button>
+            </div>
+        </header>
+        
+        <!-- 列表视图 -->
+        <div id="list-view" class="view active">
+            <!-- 统计信息 -->
+            <div id="stats-container" class="stats-container"></div>
+            
+            <!-- 快捷筛选 -->
+            <div class="quick-filter">
+                <button class="quick-status-btn active" data-status="all">全部</button>
+                <button class="quick-status-btn" data-status="pending">⏳ 待处理</button>
+                <button class="quick-status-btn" data-status="in_progress">🔄 进行中</button>
+                <button class="quick-status-btn" data-status="blocked">🚧 遇问题</button>
+                <button class="quick-status-btn" data-status="completed">✅ 已完成</button>
+            </div>
+            
+            <!-- 日期筛选 -->
+            <div class="date-filter">
+                <span class="filter-label">📅 按创建日期筛选：</span>
+                <input type="date" id="filter-start-date" class="filter-date-input">
+                <span class="filter-separator">至</span>
+                <input type="date" id="filter-end-date" class="filter-date-input">
+                <button class="btn-filter-apply" onclick="App.applyDateFilter()">筛选</button>
+                <button class="btn-filter-clear" onclick="App.clearDateFilter()">清除</button>
+            </div>
+            
+            <!-- 事项列表 -->
+            <div id="matter-list" class="matter-list"></div>
+        </div>
+        
+        <!-- 添加/编辑视图 -->
+        <div id="add-view" class="view">
+            <div class="form-container">
+                <h2 class="form-title" id="form-title">添加事项</h2>
+                <form id="matter-form">
+                    <div class="form-group">
+                        <label class="form-label">事项内容 *</label>
+                        <textarea 
+                            id="matter-content" 
+                            class="form-textarea" 
+                            placeholder="请输入待跟进的事项内容..."
+                            required
+                        ></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">创建日期 *</label>
+                        <input 
+                            type="date" 
+                            id="matter-created-date" 
+                            class="form-input"
+                            value=""
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">附件（图片或文件）</label>
+                        <div class="file-upload-container">
+                            <input 
+                                type="file" 
+                                id="matter-attachments" 
+                                class="file-input"
+                                multiple 
+                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar"
+                            >
+                            <label for="matter-attachments" class="file-label">
+                                <span class="file-icon">📎</span>
+                                <span class="file-text">点击选择文件或拖拽到此处</span>
+                                <span class="file-hint">支持图片、PDF、Word、Excel、压缩包等</span>
+                            </label>
+                        </div>
+                        <div id="existing-attachments" class="attachment-preview-container"></div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="cancel-btn" class="btn btn-secondary">取消</button>
+                        <button type="button" id="save-btn" class="btn btn-primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 设置视图 -->
+        <div id="settings-view" class="view">
+            <div class="settings-section">
+                <h3 class="settings-title">🔔 推送设置</h3>
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">启用定时推送</div>
+                        <div class="setting-hint">每天自动推送待跟进事项清单</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="push-enabled" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <div>
+                        <div class="setting-label">推送时间</div>
+                        <div class="setting-hint">每天自动推送的时间点</div>
+                    </div>
+                    <input 
+                        type="time" 
+                        id="push-time" 
+                        class="form-input" 
+                        style="width: auto;"
+                        value="09:00"
+                    >
+                </div>
+                <div class="form-actions" style="margin-top: 16px;">
+                    <button type="button" id="test-push-btn" class="btn btn-secondary">测试推送</button>
+                    <button type="button" id="save-settings-btn" class="btn btn-primary">保存设置</button>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3 class="settings-title">💾 数据管理</h3>
+                <div class="data-actions">
+                    <button type="button" id="export-btn" class="btn-outline">📥 导出 JSON</button>
+                    <button type="button" id="export-excel-btn" class="btn-outline">📊 导出 Excel</button>
+                    <button type="button" id="clear-btn" class="btn-outline btn-danger">🗑️ 清空数据</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 回复视图 -->
+        <div id="replies-view" class="view">
+            <!-- 顶部事项信息栏 -->
+            <div id="reply-matter-info"></div>
+
+            <!-- 左右两栏 -->
+            <div class="replies-layout">
+                <!-- 左栏：回复记录 -->
+                <div class="replies-left">
+                    <div class="replies-section-title">💬 回复记录</div>
+                    <div id="reply-list" class="reply-list"></div>
+                </div>
+
+                <!-- 右栏：添加/编辑回复 -->
+                <div class="replies-right">
+                    <div class="replies-section-title" id="reply-form-title">✏️ 添加回复</div>
+                    <form id="reply-form">
+                        <div class="form-group" style="margin-bottom:10px;">
+                            <input 
+                                type="text" 
+                                id="reply-author" 
+                                class="form-input" 
+                                placeholder="回复者姓名（选填）"
+                            >
+                        </div>
+                        <div class="form-group" style="margin-bottom:10px;">
+                            <textarea 
+                                id="reply-content" 
+                                class="form-textarea reply-textarea" 
+                                placeholder="请输入回复内容..."
+                            ></textarea>
+                        </div>
+                        <div class="form-group" style="margin-bottom:10px;">
+                            <div class="file-upload-container">
+                                <input 
+                                    type="file" 
+                                    id="reply-attachments" 
+                                    class="file-input"
+                                    multiple 
+                                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar"
+                                >
+                                <label for="reply-attachments" class="file-label file-label-compact">
+                                    <span class="file-icon">📎</span>
+                                    <span class="file-text">点击添加附件</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-actions" style="flex-wrap:wrap;gap:8px;">
+                            <button type="button" id="cancel-reply-edit-btn" class="btn btn-secondary" onclick="App.cancelEditReply()" style="display: none;">取消编辑</button>
+                            <button type="submit" id="submit-reply-btn" class="btn btn-primary" style="flex:1;">提交回复</button>
+                        </div>
+                    </form>
+                    <!-- 返回按钮 -->
+                    <button type="button" class="btn btn-secondary btn-back-list" onclick="App.switchView('list')">← 返回列表</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 底部 Tab 导航 -->
+        <div style="position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 12px; display: flex; justify-content: center; gap: 24px;">
+            <button class="quick-status-btn active" data-tab="list" onclick="App.switchView('list')">📋 事项</button>
+            <button class="quick-status-btn" data-tab="settings" onclick="App.switchView('settings')">⚙️ 设置</button>
+        </div>
+        
+        <!-- 底部留白（适配固定导航） -->
+        <div style="height: 80px;"></div>
+    </div>
+    
+    <!-- 引入脚本 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="data-store.js?v=7"></script>
+    <script src="scheduler.js?v=7"></script>
+    <script src="app.js?v=7"></script>
+</body>
+</html>
