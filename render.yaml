@@ -1,0 +1,15 @@
+# Render 蓝图配置
+# 使用方式: 在 Render Dashboard 中选择 "Blueprint" 部署，指向此仓库
+services:
+  - type: web
+    name: matters-manager
+    env: python
+    region: singapore  # 新加坡节点，对中国大陆网络较好
+    buildCommand: pip install -r requirements.txt
+    startCommand: python3 server.py
+    plan: free
+    envVars:
+      - key: SUPABASE_URL
+        value: https://piwebuchomdywncfgyuq.supabase.co
+      - key: SUPABASE_ANON_KEY
+        value: sb_publishable_MjblorVpn2ydqABUg2uDNg_Y6eCIiML
