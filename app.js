@@ -10,6 +10,7 @@ const App = {
     selectedMatter: null,
     pollInterval: null,
     dateFilter: { start: '', end: '' },  // 日期筛选
+    pendingFiles: {},      // 新上传附件的临时存储（用于支持删除）
 
     // 初始化
     async init() {
@@ -197,6 +198,16 @@ const App = {
 
     // 绑定主事件
     bindEvents() {
+        // 附件上传预览
+        document.getElementById('matter-attachments').addEventListener('change', (e) => {
+            this.renderAttachmentPreview(e.target.files, 'matter-attachments-preview');
+        });
+        
+        // 回复附件上传预览
+        document.getElementById('reply-attachments').addEventListener('change', (e) => {
+            this.renderAttachmentPreview(e.target.files, 'reply-attachments-preview');
+        });
+        
         document.getElementById('add-btn').addEventListener('click', () => this.switchView('add'));
         document.getElementById('refresh-btn').addEventListener('click', () => this.refresh());
         document.getElementById('save-btn').addEventListener('click', () => this.saveMatter());
@@ -305,8 +316,8 @@ const App = {
             } catch(e) {}
         });
         
-        // 新上传的附件
-        const newFiles = document.getElementById('matter-attachments').files;
+        // 新上传的附件（从 pendingFiles 读取，支持删除后的最新列表）
+        const newFiles = this.pendingFiles['matter-attachments-preview'] || [];
         if (newFiles.length > 0) {
             for (const file of newFiles) {
                 const base64 = await this.fileToBase64(file);
@@ -334,7 +345,103 @@ const App = {
         btn.disabled = false;
         btn.textContent = '保存';
         this.resetForm();
+        this.pendingFiles['matter-attachments-preview'] = [];
         await this.switchView('list');
+    },
+
+    // 渲染附件预览（文件选择后立即显示，支持删除）
+    renderAttachmentPreview(files, containerId) {
+        let container = document.getElementById(containerId);
+        if (!container) {
+            const inputEl = containerId === 'matter-attachments-preview'
+                ? document.getElementById('matter-attachments')
+                : document.getElementById('reply-attachments');
+            container = document.createElement('div');
+            container.id = containerId;
+            container.className = 'attachment-preview-container';
+            // 插入到 file-upload-container 的父元素（form-group）中，紧跟在 file-upload-container 后面
+            const formGroup = inputEl.closest('.form-group');
+            if (formGroup) {
+                formGroup.appendChild(container);
+            } else {
+                inputEl.parentElement.parentElement.appendChild(container);
+            }
+        }
+
+        // 初始化该容器的文件列表
+        if (!this.pendingFiles[containerId]) {
+            this.pendingFiles[containerId] = [];
+        }
+
+        // 为每个新文件生成 objectURL 并追加
+        const fileArray = Array.from(files);
+        fileArray.forEach(file => {
+            if (file.type && file.type.startsWith('image/')) {
+                file._objectUrl = URL.createObjectURL(file);
+            }
+        });
+        this.pendingFiles[containerId].push(...fileArray);
+
+        this._renderPreviewList(containerId, container);
+    },
+    
+    // 内部方法：根据 pendingFiles 渲染预览列表
+    _renderPreviewList(containerId, container) {
+        const fileList = this.pendingFiles[containerId];
+        
+        if (!fileList || fileList.length === 0) {
+            container.innerHTML = '';
+            // 同步清空 file input，以便重新选择同名文件
+            const inputId = containerId === 'matter-attachments-preview' ? 'matter-attachments' : 'reply-attachments';
+            const inputEl = document.getElementById(inputId);
+            if (inputEl) inputEl.value = '';
+            return;
+        }
+        
+        const previews = fileList.map((file, idx) => {
+            const isImage = file.type && file.type.startsWith('image/');
+            const sizeStr = file.size > 1024 * 1024 
+                ? (file.size / (1024 * 1024)).toFixed(1) + ' MB'
+                : (file.size / 1024).toFixed(0) + ' KB';
+            
+            let mediaHtml;
+            if (isImage && file._objectUrl) {
+                mediaHtml = `<img src="${file._objectUrl}" alt="${file.name}" class="preview-image">`;
+            } else {
+                mediaHtml = `<div class="preview-file-icon">📄</div>`;
+            }
+            
+            return `
+                <div class="attachment-preview-item" data-preview-index="${idx}">
+                    <button type="button" class="preview-remove-btn" onclick="App.removePreviewFile('${containerId}', ${idx})" title="删除">&times;</button>
+                    ${mediaHtml}
+                    <div class="preview-info">
+                        <span class="preview-name">${file.name}</span>
+                        <span class="preview-size">${sizeStr}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        container.innerHTML = `
+            <div class="preview-header">已选择 ${fileList.length} 个文件</div>
+            <div class="preview-list">${previews}</div>
+        `;
+    },
+    
+    // 删除预览中的文件
+    removePreviewFile(containerId, index) {
+        if (this.pendingFiles[containerId]) {
+            // 释放 objectURL 防止内存泄漏
+            const file = this.pendingFiles[containerId][index];
+            if (file && file._objectUrl) {
+                URL.revokeObjectURL(file._objectUrl);
+                file._objectUrl = null;
+            }
+            this.pendingFiles[containerId].splice(index, 1);
+        }
+        const container = document.getElementById(containerId);
+        if (container) this._renderPreviewList(containerId, container);
     },
     
     // 文件转 Base64
@@ -507,9 +614,9 @@ const App = {
         const author = document.getElementById('reply-author').value.trim() || '匿名';
         if (!content) { alert('请输入回复内容'); return; }
         
-        // 收集附件
+        // 收集附件（从 pendingFiles 读取，支持删除后的最新列表）
         const attachments = [];
-        const replyFiles = document.getElementById('reply-attachments').files;
+        const replyFiles = this.pendingFiles['reply-attachments-preview'] || [];
         if (replyFiles.length > 0) {
             for (const file of replyFiles) {
                 const base64 = await this.fileToBase64(file);
@@ -531,6 +638,12 @@ const App = {
                 // 新增模式
                 await DataStore.addReply(this.selectedMatter.id, { content, author, attachments });
                 document.getElementById('reply-content').value = '';
+                // 清空回复附件预览
+                this.pendingFiles['reply-attachments-preview'] = [];
+                const replyPreview = document.getElementById('reply-attachments-preview');
+                if (replyPreview) replyPreview.innerHTML = '';
+                const replyInput = document.getElementById('reply-attachments');
+                if (replyInput) replyInput.value = '';
             }
 
             // ✅ 核心逻辑：有回复 → 自动将「待处理」升级为「进行中」
@@ -754,6 +867,9 @@ const App = {
         this.editingMatter = null;
         document.getElementById('form-title').textContent = '添加事项';
         document.getElementById('existing-attachments').innerHTML = '';
+        // 清除附件预览
+        const previewContainer = document.getElementById('matter-attachments-preview');
+        if (previewContainer) previewContainer.innerHTML = '';
         document.getElementById('matter-created-date').value = new Date().toISOString().split('T')[0];
     }
 };
