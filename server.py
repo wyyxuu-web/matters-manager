@@ -1,65 +1,41 @@
 #!/usr/bin/env python3
 """
-事项跟进管理系统 - 后端服务
-使用 Python 内置模块，不依赖任何外部库
-数据存储在 matters_data.json 文件中
+事项跟进管理系统 - 后端服务（Supabase 版）
+数据存储在 Supabase PostgreSQL，不再依赖本地 JSON 文件
 
 启动方式: python3 server.py
-访问地址: http://localhost:8000
+环境变量: SUPABASE_URL, SUPABASE_ANON_KEY, PORT（可选，默认 8000）
 """
 
 import json
 import os
-import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 import time
 import string
 import random
 
+from supabase import create_client, Client
+
 # ====== 配置 ======
-PORT = 8000
-DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'matters_data.json')
+PORT = int(os.environ.get('PORT', 8000))
+SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://piwebuchomdywncfgyuq.supabase.co')
+SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY', 'sb_publishable_MjblorVpn2ydqABUg2uDNg_Y6eCIiML')
 STATIC_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# ====== 数据初始化 ======
-def get_default_data():
-    return {
-        "matters": [],
-        "settings": {
-            "pushTime": "09:00",
-            "pushEnabled": True
-        }
-    }
+# ====== Supabase 客户端 ======
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-def load_data():
-    if not os.path.exists(DATA_FILE):
-        save_data(get_default_data())
-    try:
-        with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"数据加载失败: {e}")
-        return get_default_data()
-
-def save_data(data):
-    try:
-        with open(DATA_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        return True
-    except Exception as e:
-        print(f"数据保存失败: {e}")
-        return False
 
 def gen_id():
     chars = string.ascii_letters + string.digits
     return ''.join(random.choices(chars, k=12))
 
+
 # ====== 请求处理器 ======
 class MatterHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
-        # 自定义日志，更友好
         print(f"[{self.log_date_time_string()}] {self.client_address[0]} - {format % args}")
 
     def send_json(self, status, data):
@@ -109,32 +85,125 @@ class MatterHandler(BaseHTTPRequestHandler):
         self._cors_headers()
         self.end_headers()
 
+    # ====== 辅助函数 ======
+
+    def _get_matter_with_details(self, matter_row):
+        """将数据库行转为完整的事项对象，包含 replies 和 attachments"""
+        matter = dict(matter_row)
+        matter['replies'] = []
+        matter['attachments'] = []
+
+        try:
+            # 获取回复
+            replies_resp = supabase.table('replies').select('*').eq('matter_id', matter['id']).order('created_at').execute()
+            for reply_row in replies_resp.data:
+                reply = dict(reply_row)
+                # 获取回复的附件
+                att_resp = supabase.table('attachments').select('*').eq('reply_id', reply['id']).execute()
+                reply['attachments'] = []
+                for att in att_resp.data:
+                    reply['attachments'].append({
+                        'name': att['name'],
+                        'type': att['type'],
+                        'url': att['data'],
+                        'data': att['data']
+                    })
+                matter['replies'].append(reply)
+
+            # 获取事项本身的附件
+            att_resp = supabase.table('attachments').select('*').eq('matter_id', matter['id']).is_('reply_id', 'null').execute()
+            for att in att_resp.data:
+                matter['attachments'].append({
+                    'name': att['name'],
+                    'type': att['type'],
+                    'url': att['data'],
+                    'data': att['data']
+                })
+        except Exception as e:
+            print(f"获取详情失败: {e}")
+
+        # 转换日期格式为前端兼容的 ISO 字符串
+        for date_field in ['createdAt', 'created_at', 'createdat']:
+            if date_field in matter:
+                matter['createdAt'] = self._to_iso(matter.pop(date_field))
+                break
+        for date_field in ['updatedAt', 'updated_at', 'updatedat']:
+            if date_field in matter:
+                matter['updatedAt'] = self._to_iso(matter.pop(date_field))
+                break
+
+        return matter
+
+    def _to_iso(self, val):
+        """将数据库时间转为 ISO 字符串"""
+        if val is None:
+            return time.strftime('%Y-%m-%dT%H:%M:%S')
+        if isinstance(val, str):
+            return val
+        try:
+            return val.isoformat()
+        except:
+            return str(val)
+
+    def _save_attachments(self, attachments, matter_id=None, reply_id=None):
+        """保存附件到数据库"""
+        for att in (attachments or []):
+            att_id = gen_id()
+            supabase.table('attachments').insert({
+                'id': att_id,
+                'matter_id': matter_id,
+                'reply_id': reply_id,
+                'name': att.get('name', ''),
+                'type': att.get('type', 'file'),
+                'data': att.get('data', att.get('url', ''))
+            }).execute()
+
+    # ====== GET 请求 ======
+
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
 
         # ====== API 路由 ======
         if path == '/api/matters':
-            data = load_data()
-            self.send_json(200, {'success': True, 'data': data['matters']})
+            try:
+                resp = supabase.table('matters').select('*').order('created_at', desc=True).execute()
+                matters = [self._get_matter_with_details(row) for row in resp.data]
+                self.send_json(200, {'success': True, 'data': matters})
+            except Exception as e:
+                print(f"获取事项失败: {e}")
+                self.send_json(500, {'success': False, 'error': str(e)})
             return
 
         if path == '/api/settings':
-            data = load_data()
-            self.send_json(200, {'success': True, 'data': data['settings']})
+            try:
+                resp = supabase.table('settings').select('*').execute()
+                settings = {}
+                for row in resp.data:
+                    key = row['key']
+                    val = row['value']
+                    if key == 'pushEnabled':
+                        settings[key] = val.lower() == 'true'
+                    else:
+                        settings[key] = val
+                self.send_json(200, {'success': True, 'data': settings})
+            except Exception as e:
+                self.send_json(500, {'success': False, 'error': str(e)})
             return
 
         if path == '/api/stats':
-            data = load_data()
-            matters = data['matters']
-            stats = {
-                'total': len(matters),
-                'pending': sum(1 for m in matters if m.get('status') == 'pending'),
-                'in_progress': sum(1 for m in matters if m.get('status') == 'in_progress'),
-                'completed': sum(1 for m in matters if m.get('status') == 'completed'),
-                'blocked': sum(1 for m in matters if m.get('status') == 'blocked'),
-            }
-            self.send_json(200, {'success': True, 'data': stats})
+            try:
+                resp = supabase.table('matters').select('status').execute()
+                stats = {
+                    'total': len(resp.data),
+                    'pending': sum(1 for r in resp.data if r.get('status') == 'pending'),
+                    'in_progress': sum(1 for r in resp.data if r.get('status') == 'in_progress'),
+                    'completed': sum(1 for r in resp.data if r.get('status') == 'completed'),
+                    'blocked': sum(1 for r in resp.data if r.get('status') == 'blocked'),
+                }
+                self.send_json(200, {'success': True, 'data': stats})
+            except Exception as e:
+                self.send_json(500, {'success': False, 'error': str(e)})
             return
 
         # ====== 静态文件 ======
@@ -147,6 +216,8 @@ class MatterHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
+    # ====== POST 请求 ======
+
     def do_POST(self):
         parsed = urlparse(self.path)
         path = parsed.path
@@ -154,146 +225,179 @@ class MatterHandler(BaseHTTPRequestHandler):
         # 添加事项
         if path == '/api/matters':
             body = self.read_body()
-            data = load_data()
             now = time.strftime('%Y-%m-%dT%H:%M:%S')
             created_at = body.get('createdAt', now)
-            matter = {
-                'id': gen_id(),
-                'content': body.get('content', ''),
-                'status': 'pending',
-                'createdAt': created_at,
-                'updatedAt': now,
-                'replies': [],
-                'attachments': body.get('attachments', [])
-            }
-            data['matters'].append(matter)
-            save_data(data)
-            self.send_json(201, {'success': True, 'data': matter})
+            matter_id = gen_id()
+
+            try:
+                supabase.table('matters').insert({
+                    'id': matter_id,
+                    'content': body.get('content', ''),
+                    'status': 'pending',
+                    'created_at': created_at,
+                    'updated_at': now
+                }).execute()
+
+                # 保存附件
+                self._save_attachments(body.get('attachments', []), matter_id=matter_id)
+
+                # 返回完整对象
+                matter = {
+                    'id': matter_id,
+                    'content': body.get('content', ''),
+                    'status': 'pending',
+                    'createdAt': created_at,
+                    'updatedAt': now,
+                    'replies': [],
+                    'attachments': body.get('attachments', [])
+                }
+                self.send_json(201, {'success': True, 'data': matter})
+            except Exception as e:
+                self.send_json(500, {'success': False, 'error': str(e)})
             return
 
-        # 添加回复：POST /api/matters/:id/replies
+        # 添加回复 / 更新回复
         parts = path.strip('/').split('/')
-        if len(parts) == 4 and parts[0] == 'api' and parts[1] == 'matters' and parts[3] == 'replies':
+        if len(parts) >= 4 and parts[0] == 'api' and parts[1] == 'matters' and parts[3] == 'replies':
             matter_id = parts[2]
-            body = self.read_body()
-            data = load_data()
-            matter = next((m for m in data['matters'] if m['id'] == matter_id), None)
-            if not matter:
-                self.send_json(404, {'success': False, 'error': '事项不存在'})
+
+            # 更新回复：PUT 逻辑（在 POST 中处理，因为前端可能发 POST）
+            if len(parts) == 5:
+                reply_id = parts[4]
+                body = self.read_body()
+                try:
+                    updates = {}
+                    if 'content' in body:
+                        updates['content'] = body['content']
+                    if 'author' in body:
+                        updates['author'] = body['author']
+                    supabase.table('replies').update(updates).eq('id', reply_id).execute()
+
+                    # 更新附件（替换）
+                    if 'attachments' in body:
+                        supabase.table('attachments').delete().eq('reply_id', reply_id).execute()
+                        self._save_attachments(body['attachments'], matter_id=matter_id, reply_id=reply_id)
+
+                    supabase.table('matters').update({'updated_at': time.strftime('%Y-%m-%dT%H:%M:%S')}).eq('id', matter_id).execute()
+
+                    resp = supabase.table('replies').select('*').eq('id', reply_id).execute()
+                    if resp.data:
+                        reply = dict(resp.data[0])
+                        reply['createdAt'] = self._to_iso(reply.pop('created_at', ''))
+                        self.send_json(200, {'success': True, 'data': reply})
+                    else:
+                        self.send_json(404, {'success': False, 'error': '回复不存在'})
+                except Exception as e:
+                    self.send_json(500, {'success': False, 'error': str(e)})
                 return
-            now = time.strftime('%Y-%m-%dT%H:%M:%S')
-            reply = {
-                'id': gen_id(),
-                'content': body.get('content', ''),
-                'author': body.get('author', '匿名'),
-                'createdAt': now,
-                'attachments': body.get('attachments', [])
-            }
-            matter.setdefault('replies', []).append(reply)
-            matter['updatedAt'] = now
-            save_data(data)
-            self.send_json(201, {'success': True, 'data': reply})
-            return
-        
-        # 更新回复：PUT /api/matters/:id/replies/:replyId
-        if len(parts) == 5 and parts[0] == 'api' and parts[1] == 'matters' and parts[3] == 'replies':
-            matter_id = parts[2]
-            reply_id = parts[4]
-            body = self.read_body()
-            data = load_data()
-            matter = next((m for m in data['matters'] if m['id'] == matter_id), None)
-            if not matter:
-                self.send_json(404, {'success': False, 'error': '事项不存在'})
+
+            # 添加回复
+            if len(parts) == 4:
+                body = self.read_body()
+                now = time.strftime('%Y-%m-%dT%H:%M:%S')
+                reply_id = gen_id()
+
+                try:
+                    supabase.table('replies').insert({
+                        'id': reply_id,
+                        'matter_id': matter_id,
+                        'content': body.get('content', ''),
+                        'author': body.get('author', '匿名'),
+                        'created_at': now
+                    }).execute()
+
+                    # 保存附件
+                    self._save_attachments(body.get('attachments', []), matter_id=matter_id, reply_id=reply_id)
+
+                    supabase.table('matters').update({'updated_at': now}).eq('id', matter_id).execute()
+
+                    reply = {
+                        'id': reply_id,
+                        'content': body.get('content', ''),
+                        'author': body.get('author', '匿名'),
+                        'createdAt': now,
+                        'attachments': body.get('attachments', [])
+                    }
+                    self.send_json(201, {'success': True, 'data': reply})
+                except Exception as e:
+                    self.send_json(500, {'success': False, 'error': str(e)})
                 return
-            reply = next((r for r in matter.get('replies', []) if r['id'] == reply_id), None)
-            if not reply:
-                self.send_json(404, {'success': False, 'error': '回复不存在'})
-                return
-            # 更新字段
-            if 'content' in body:
-                reply['content'] = body['content']
-            if 'author' in body:
-                reply['author'] = body['author']
-            if 'attachments' in body:
-                reply['attachments'] = body['attachments']
-            matter['updatedAt'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-            save_data(data)
-            self.send_json(200, {'success': True, 'data': reply})
-            return
 
         self.send_json(404, {'success': False, 'error': '路由不存在'})
+
+    # ====== PUT 请求 ======
 
     def do_PUT(self):
         parsed = urlparse(self.path)
         path = parsed.path
         parts = path.strip('/').split('/')
 
-        # 更新事项：PUT /api/matters/:id
+        # 更新事项
         if len(parts) == 3 and parts[0] == 'api' and parts[1] == 'matters':
             matter_id = parts[2]
             body = self.read_body()
-            data = load_data()
-            matter = next((m for m in data['matters'] if m['id'] == matter_id), None)
-            if not matter:
-                self.send_json(404, {'success': False, 'error': '事项不存在'})
-                return
-            # 允许更新的字段
-            for field in ['content', 'status', 'createdAt']:
-                if field in body:
-                    matter[field] = body[field]
-            if 'attachments' in body:
-                matter['attachments'] = body['attachments']
-            matter['updatedAt'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-            save_data(data)
-            self.send_json(200, {'success': True, 'data': matter})
+            try:
+                updates = {'updated_at': time.strftime('%Y-%m-%dT%H:%M:%S')}
+                for field in ['content', 'status', 'created_at']:
+                    if field in body:
+                        updates[field] = body[field]
+
+                supabase.table('matters').update(updates).eq('id', matter_id).execute()
+
+                # 更新附件
+                if 'attachments' in body:
+                    supabase.table('attachments').delete().eq('matter_id', matter_id).is_('reply_id', 'null').execute()
+                    self._save_attachments(body['attachments'], matter_id=matter_id)
+
+                self.send_json(200, {'success': True, 'data': {'id': matter_id, **updates}})
+            except Exception as e:
+                self.send_json(500, {'success': False, 'error': str(e)})
             return
 
-        # 更新设置：PUT /api/settings
+        # 更新设置
         if path == '/api/settings':
             body = self.read_body()
-            data = load_data()
-            data['settings'].update(body)
-            save_data(data)
-            self.send_json(200, {'success': True, 'data': data['settings']})
+            try:
+                for key, val in body.items():
+                    supabase.table('settings').upsert({
+                        'key': key,
+                        'value': str(val).lower() if isinstance(val, bool) else str(val)
+                    }).execute()
+
+                self.send_json(200, {'success': True, 'data': body})
+            except Exception as e:
+                self.send_json(500, {'success': False, 'error': str(e)})
             return
 
         self.send_json(404, {'success': False, 'error': '路由不存在'})
+
+    # ====== DELETE 请求 ======
 
     def do_DELETE(self):
         parsed = urlparse(self.path)
         path = parsed.path
         parts = path.strip('/').split('/')
 
-        # 删除事项：DELETE /api/matters/:id
+        # 删除事项（级联删除回复和附件）
         if len(parts) == 3 and parts[0] == 'api' and parts[1] == 'matters':
             matter_id = parts[2]
-            data = load_data()
-            original_len = len(data['matters'])
-            data['matters'] = [m for m in data['matters'] if m['id'] != matter_id]
-            if len(data['matters']) == original_len:
-                self.send_json(404, {'success': False, 'error': '事项不存在'})
-                return
-            save_data(data)
-            self.send_json(200, {'success': True, 'message': '删除成功'})
+            try:
+                supabase.table('matters').delete().eq('id', matter_id).execute()
+                self.send_json(200, {'success': True, 'message': '删除成功'})
+            except Exception as e:
+                self.send_json(500, {'success': False, 'error': str(e)})
             return
-        
-        # 删除回复：DELETE /api/matters/:id/replies/:replyId
+
+        # 删除回复
         if len(parts) == 5 and parts[0] == 'api' and parts[1] == 'matters' and parts[3] == 'replies':
             matter_id = parts[2]
             reply_id = parts[4]
-            data = load_data()
-            matter = next((m for m in data['matters'] if m['id'] == matter_id), None)
-            if not matter:
-                self.send_json(404, {'success': False, 'error': '事项不存在'})
-                return
-            original_len = len(matter.get('replies', []))
-            matter['replies'] = [r for r in matter.get('replies', []) if r['id'] != reply_id]
-            if len(matter['replies']) == original_len:
-                self.send_json(404, {'success': False, 'error': '回复不存在'})
-                return
-            matter['updatedAt'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-            save_data(data)
-            self.send_json(200, {'success': True, 'message': '删除成功'})
+            try:
+                supabase.table('replies').delete().eq('id', reply_id).execute()
+                supabase.table('matters').update({'updated_at': time.strftime('%Y-%m-%dT%H:%M:%S')}).eq('id', matter_id).execute()
+                self.send_json(200, {'success': True, 'message': '删除成功'})
+            except Exception as e:
+                self.send_json(500, {'success': False, 'error': str(e)})
             return
 
         self.send_json(404, {'success': False, 'error': '路由不存在'})
@@ -301,29 +405,14 @@ class MatterHandler(BaseHTTPRequestHandler):
 
 # ====== 主程序 ======
 def main():
-    # 初始化数据文件
-    if not os.path.exists(DATA_FILE):
-        save_data(get_default_data())
-        print(f"✅ 数据文件已初始化: {DATA_FILE}")
 
     server = HTTPServer(('0.0.0.0', PORT), MatterHandler)
 
-    # 获取本机 IP
-    import socket
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(('8.8.8.8', 80))
-        local_ip = s.getsockname()[0]
-        s.close()
-    except Exception:
-        local_ip = '127.0.0.1'
-
     print("=" * 50)
-    print("  📋 事项跟进管理系统 - 服务已启动")
+    print("  📋 事项跟进管理系统 - 服务已启动（Supabase 版）")
     print("=" * 50)
-    print(f"  本机访问: http://localhost:{PORT}")
-    print(f"  局域网访问: http://{local_ip}:{PORT}")
-    print(f"  数据存储: {DATA_FILE}")
+    print(f"  端口: {PORT}")
+    print(f"  数据库: Supabase PostgreSQL")
     print("  按 Ctrl+C 停止服务")
     print("=" * 50)
 
