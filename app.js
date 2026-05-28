@@ -161,10 +161,12 @@ const App = {
                 <div class="matter-header">
                     <span class="matter-status ${st.cls}">${st.text}</span>
                     ${followupTag}
-                    <span class="matter-meta-inline">📅 ${createdDateStr}（${daysSinceCreated}天）${hasAttachments ? ' 📎' : ''}</span>
-                    <div class="matter-card-actions">
-                        <button class="card-action-btn card-edit-btn" data-action="edit" data-id="${matter.id}" title="编辑">✏️ 编辑</button>
-                        <button class="card-action-btn card-delete-btn" data-action="delete" data-id="${matter.id}" title="删除">🗑️ 删除</button>
+                    <div class="matter-header-right">
+                        <span class="matter-meta-inline">📅 ${createdDateStr}（${daysSinceCreated}天）${hasAttachments ? ' 📎' : ''}</span>
+                        <div class="matter-card-actions">
+                            <button class="card-action-btn card-edit-btn" data-action="edit" data-id="${matter.id}" title="编辑">✏️ 编辑</button>
+                            <button class="card-action-btn card-delete-btn" data-action="delete" data-id="${matter.id}" title="删除">🗑️ 删除</button>
+                        </div>
                     </div>
                 </div>
                 <div class="matter-content">${matter.content}</div>
