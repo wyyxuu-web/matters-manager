@@ -33,23 +33,23 @@ const App = {
     async renderStats() {
         const stats = await DataStore.getStats();
         document.getElementById('stats-container').innerHTML = `
-            <div class="stat-item">
+            <div class="stat-item" data-status="all" onclick="App.clickStatFilter('all')">
                 <span class="stat-number">${stats.total}</span>
                 <span class="stat-label">全部</span>
             </div>
-            <div class="stat-item stat-pending">
+            <div class="stat-item stat-pending" data-status="pending" onclick="App.clickStatFilter('pending')">
                 <span class="stat-number">${stats.pending}</span>
                 <span class="stat-label">待处理</span>
             </div>
-            <div class="stat-item stat-progress">
+            <div class="stat-item stat-progress" data-status="in_progress" onclick="App.clickStatFilter('in_progress')">
                 <span class="stat-number">${stats.in_progress}</span>
                 <span class="stat-label">进行中</span>
             </div>
-            <div class="stat-item stat-blocked">
+            <div class="stat-item stat-blocked" data-status="blocked" onclick="App.clickStatFilter('blocked')">
                 <span class="stat-number">${stats.blocked}</span>
                 <span class="stat-label">遇问题</span>
             </div>
-            <div class="stat-item stat-completed">
+            <div class="stat-item stat-completed" data-status="completed" onclick="App.clickStatFilter('completed')">
                 <span class="stat-number">${stats.completed}</span>
                 <span class="stat-label">已完成</span>
             </div>
@@ -90,6 +90,26 @@ const App = {
         this.bindCardEvents();
     },
 
+    // 检查是否有新回复
+    hasNewReply(matter) {
+        const key = `matter_reply_count_${matter.id}`;
+        const lastSeenCount = parseInt(localStorage.getItem(key) || '0', 10);
+        const currentCount = (matter.replies || []).length;
+        return currentCount > lastSeenCount;
+    },
+
+    // 标记回复已读
+    markRepliesRead(matterId) {
+        const matters = DataStore._cachedMatters; // 从缓存获取当前数量
+        // 重新从 DataStore 获取最新数据
+        DataStore.getMatters().then(all => {
+            const m = all.find(x => x.id === matterId);
+            if (m) {
+                localStorage.setItem(`matter_reply_count_${matterId}`, (m.replies || []).length);
+            }
+        });
+    },
+
     // 渲染单个事项卡片
     renderMatterCard(matter) {
         const statusMap = {
@@ -121,6 +141,8 @@ const App = {
         const createdDateStr = createdDate.toLocaleDateString('zh-CN');
         const hasAttachments = matter.attachments && matter.attachments.length > 0;
         const replyCount = (matter.replies || []).length;
+        const hasNew = this.hasNewReply(matter);
+        const newBadge = hasNew ? '<span class="new-reply-badge" title="有新回复">●</span>' : '';
 
         // 状态操作按钮
         let actionButtons = '';
@@ -146,7 +168,7 @@ const App = {
             </div>
             <div class="matter-footer">
                 <span class="matter-replies" data-action="view-replies" data-id="${matter.id}">
-                    💬 ${replyCount} 条回复
+                    💬 ${replyCount} 条回复 ${newBadge}
                 </span>
                 <div class="matter-actions">
                     ${actionButtons}
@@ -233,6 +255,10 @@ const App = {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.quick-status-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                // 同步高亮统计卡片
+                document.querySelectorAll('.stat-item').forEach(s => {
+                    s.classList.toggle('active', s.dataset.status === btn.dataset.status);
+                });
                 this.filterByStatus(btn.dataset.status);
             });
         });
@@ -490,6 +516,8 @@ const App = {
         const matter = matters.find(m => m.id === id);
         if (matter) {
             this.selectedMatter = matter;
+            // 标记回复已读
+            localStorage.setItem(`matter_reply_count_${matter.id}`, (matter.replies || []).length);
             this.renderReplies(matter);
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById('replies-view').classList.add('active');
@@ -509,31 +537,55 @@ const App = {
         
         const createdDate = new Date(matter.createdAt).toLocaleDateString('zh-CN');
 
+        // 状态操作按钮
+        let replyStatusActions = '';
+        if (matter.status === 'completed') {
+            replyStatusActions = `<button class="btn-status-action uncomplete" onclick="App.replyMarkUncomplete('${matter.id}')" title="标记为未完成">❌ 未完成</button>`;
+        } else {
+            replyStatusActions = `<button class="btn-status-action complete" onclick="App.replyMarkComplete('${matter.id}')" title="标记为已完成">✅ 完成</button>`;
+            if (matter.status !== 'blocked') {
+                replyStatusActions += `<button class="btn-status-action blocked" onclick="App.replyMarkBlocked('${matter.id}')" title="标记为遇问题">🚧 遇问题</button>`;
+            }
+        }
+
         document.getElementById('reply-matter-info').innerHTML = `
             <div class="matter-brief">
                 <span class="brief-content">${matter.content}</span>
                 <span id="reply-status-badge" class="matter-status ${st.cls}">${st.text}</span>
                 <span class="brief-meta">📅 ${createdDate}</span>
+                <div class="brief-status-actions">${replyStatusActions}</div>
             </div>`;
 
         const replies = matter.replies || [];
+        const matterAttachments = matter.attachments || [];
+        
+        // 构建事项附件 HTML
+        let matterAttachmentsHtml = '';
+        if (matterAttachments.length > 0) {
+            matterAttachmentsHtml = `
+                <div class="matter-attachments-section">
+                    <div class="matter-attachments-title">📎 事项附件（${matterAttachments.length}）</div>
+                    ${this.renderReplyAttachments(matterAttachments)}
+                </div>`;
+        }
+
         if (replies.length === 0) {
-            container.innerHTML = `<div class="empty-replies">暂无回复，收到推送后可在此回复</div>`;
+            container.innerHTML = matterAttachmentsHtml + `<div class="empty-replies">暂无回复，收到推送后可在此回复</div>`;
             return;
         }
-        container.innerHTML = replies.map((r, idx) => `
+        container.innerHTML = matterAttachmentsHtml + replies.map((r, idx) => `
             <div class="reply-item" data-reply-id="${r.id}">
                 <div class="reply-header">
                     <span class="reply-index">${idx + 1}</span>
                     <span class="reply-author">${r.author || '匿名'}</span>
                     <span class="reply-time">${new Date(r.createdAt).toLocaleString('zh-CN')}</span>
-                    <div class="reply-actions">
-                        <button class="reply-edit-btn" onclick="App.startEditReply('${r.id}')" title="编辑">✏️</button>
-                        <button class="reply-delete-btn" onclick="App.deleteReply('${r.id}')" title="删除">🗑️</button>
-                    </div>
                 </div>
                 <div class="reply-content">${r.content}</div>
                 ${r.attachments && r.attachments.length > 0 ? this.renderReplyAttachments(r.attachments) : ''}
+                <div class="reply-footer-actions">
+                    <button class="reply-edit-btn" onclick="App.startEditReply('${r.id}')" title="编辑">✏️ 编辑</button>
+                    <button class="reply-delete-btn" onclick="App.deleteReply('${r.id}')" title="删除">🗑️ 删除</button>
+                </div>
             </div>`).join('');
         
         this.bindReplyActions();
@@ -689,6 +741,19 @@ const App = {
         alert('设置已保存');
     },
 
+    // 点击统计卡片筛选
+    async clickStatFilter(status) {
+        // 更新快捷筛选按钮状态
+        document.querySelectorAll('.quick-status-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.status === status);
+        });
+        // 高亮统计卡片
+        document.querySelectorAll('.stat-item').forEach(s => {
+            s.classList.toggle('active', s.dataset.status === status);
+        });
+        await this.filterByStatus(status);
+    },
+
     // 按状态筛选（本地过滤）
     async filterByStatus(status) {
         let matters = await DataStore.getMatters();
@@ -819,6 +884,34 @@ const App = {
         // 导出文件
         const fileName = `事项列表_${new Date().toISOString().split('T')[0]}.xlsx`;
         XLSX.writeFile(wb, fileName);
+    },
+
+    // 回复界面标记完成
+    async replyMarkComplete(id) {
+        await DataStore.updateStatus(id, 'completed');
+        await this.refreshReplyView();
+    },
+
+    // 回复界面标记未完成
+    async replyMarkUncomplete(id) {
+        await DataStore.updateStatus(id, 'in_progress');
+        await this.refreshReplyView();
+    },
+
+    // 回复界面标记遇问题
+    async replyMarkBlocked(id) {
+        await DataStore.updateStatus(id, 'blocked');
+        await this.refreshReplyView();
+    },
+
+    // 刷新回复视图
+    async refreshReplyView() {
+        const matters = await DataStore.getMatters();
+        const updated = matters.find(m => m.id === this.selectedMatter.id);
+        if (updated) {
+            this.selectedMatter = updated;
+            this.renderReplies(updated);
+        }
     },
 
     // 手动刷新
