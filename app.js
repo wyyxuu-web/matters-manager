@@ -10,6 +10,7 @@ const App = {
     selectedMatter: null,
     pollInterval: null,
     dateFilter: { start: '', end: '' },  // 日期筛选
+    currentStatusFilter: 'all',          // 当前状态筛选
     pendingFiles: {},      // 新上传附件的临时存储（用于支持删除）
 
     // 初始化
@@ -541,6 +542,7 @@ const App = {
         const st = statusMap[matter.status] || statusMap.pending;
         
         const createdDate = new Date(matter.createdAt).toLocaleDateString('zh-CN');
+        const matterAttachments = matter.attachments || [];
 
         // 状态操作按钮
         let replyStatusActions = '';
@@ -566,7 +568,6 @@ const App = {
             </div>`;
 
         const replies = matter.replies || [];
-        const matterAttachments = matter.attachments || [];
 
         if (replies.length === 0) {
             container.innerHTML = `<div class="empty-replies">暂无回复，收到推送后可在此回复</div>`;
@@ -755,6 +756,7 @@ const App = {
 
     // 按状态筛选（本地过滤）
     async filterByStatus(status) {
+        this.currentStatusFilter = status;
         let matters = await DataStore.getMatters();
         
         // 应用状态筛选
@@ -929,7 +931,10 @@ const App = {
         this.pollInterval = setInterval(async () => {
             if (this.currentView === 'list') {
                 const ok = await this.checkConnection();
-                if (ok) await this.render();
+                if (ok) {
+                    await this.renderStats();
+                    await this.filterByStatus(this.currentStatusFilter);
+                }
             }
         }, 1000);
     },
