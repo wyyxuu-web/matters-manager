@@ -558,27 +558,21 @@ const App = {
                 <span class="brief-content">${matter.content}</span>
                 <span id="reply-status-badge" class="matter-status ${st.cls}">${st.text}</span>
                 <span class="brief-meta">📅 ${createdDate}</span>
+                ${matterAttachments.length > 0 ? `
+                <div class="brief-attachments">
+                    ${this.renderReplyAttachments(matter.attachments)}
+                </div>` : ''}
                 <div class="brief-status-actions">${replyStatusActions}</div>
             </div>`;
 
         const replies = matter.replies || [];
         const matterAttachments = matter.attachments || [];
-        
-        // 构建事项附件 HTML
-        let matterAttachmentsHtml = '';
-        if (matterAttachments.length > 0) {
-            matterAttachmentsHtml = `
-                <div class="matter-attachments-section">
-                    <div class="matter-attachments-title">📎 事项附件（${matterAttachments.length}）</div>
-                    ${this.renderReplyAttachments(matterAttachments)}
-                </div>`;
-        }
 
         if (replies.length === 0) {
-            container.innerHTML = matterAttachmentsHtml + `<div class="empty-replies">暂无回复，收到推送后可在此回复</div>`;
+            container.innerHTML = `<div class="empty-replies">暂无回复，收到推送后可在此回复</div>`;
             return;
         }
-        container.innerHTML = matterAttachmentsHtml + replies.map((r, idx) => `
+        container.innerHTML = replies.map((r, idx) => `
             <div class="reply-item" data-reply-id="${r.id}">
                 <div class="reply-header">
                     <span class="reply-index">${idx + 1}</span>
@@ -764,13 +758,13 @@ const App = {
         let matters = await DataStore.getMatters();
         
         // 应用状态筛选
-        const filtered = status === 'all' ? matters : matters.filter(m => m.status === status);
+        if (status !== 'all') {
+            matters = matters.filter(m => m.status === status);
+        }
         
         // 应用日期筛选
         if (this.dateFilter.start) {
-            matters = filtered.filter(m => new Date(m.createdAt) >= new Date(this.dateFilter.start));
-        } else {
-            matters = filtered;
+            matters = matters.filter(m => new Date(m.createdAt) >= new Date(this.dateFilter.start));
         }
         if (this.dateFilter.end) {
             matters = matters.filter(m => new Date(m.createdAt) <= new Date(this.dateFilter.end + 'T23:59:59'));

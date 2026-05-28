@@ -936,6 +936,31 @@ body {
     color: var(--text-muted);
 }
 
+/* 事项信息栏中的附件 */
+.brief-attachments {
+    width: 100%;
+    margin-top: 4px;
+}
+
+.brief-attachments .reply-attachment-list {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.brief-attachments .reply-attachment-item {
+    padding: 4px 8px;
+    background: transparent;
+    border-radius: 4px;
+}
+
+.brief-attachments .reply-attachment-image {
+    max-width: 60px;
+    max-height: 60px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
 /* 回复界面状态操作按钮 */
 .brief-status-actions {
     display: flex;
