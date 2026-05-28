@@ -956,24 +956,29 @@ body {
 }
 
 .btn-status-action.complete {
-    background: #d1fae5;
+    background: white;
     color: #065f46;
+    border: 1px solid var(--border-color);
 }
 .btn-status-action.complete:hover {
-    background: #a7f3d0;
+    background: #d1fae5;
+    border-color: #10b981;
 }
 
 .btn-status-action.blocked {
-    background: #fee2e2;
+    background: white;
     color: #991b1b;
+    border: 1px solid var(--border-color);
 }
 .btn-status-action.blocked:hover {
-    background: #fecaca;
+    background: #fee2e2;
+    border-color: #ef4444;
 }
 
 .btn-status-action.uncomplete {
-    background: #fee2e2;
+    background: white;
     color: #991b1b;
+    border: 1px solid var(--border-color);
 }
 .btn-status-action.uncomplete:hover {
     background: #fecaca;
@@ -983,7 +988,7 @@ body {
 .replies-layout {
     display: flex;
     gap: 0;
-    height: calc(100vh - 230px);
+    height: calc(100vh - 180px);
 }
 
 /* 左栏：回复记录 */
@@ -1039,29 +1044,6 @@ body {
 }
 
 /* 详情页底部返回按钮 */
-.reply-back-bar {
-    padding: 12px 24px;
-    text-align: center;
-    border-top: 1px solid var(--border-color);
-    background: white;
-}
-
-.btn-back-bottom {
-    padding: 8px 24px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    background: white;
-    color: var(--text-secondary);
-    font-size: 14px;
-    cursor: pointer;
-    transition: var(--transition);
-}
-
-.btn-back-bottom:hover {
-    background: var(--bg-tertiary);
-    color: var(--primary);
-    border-color: var(--primary);
-}
 .file-label-compact .file-icon { font-size: 18px !important; margin: 0 !important; }
 .file-label-compact .file-hint { display: none; }
 .file-label-compact .file-text { font-size: 13px; color: var(--text-secondary); }
@@ -1238,19 +1220,19 @@ body {
 /* 事项附件区域（回复视图中） */
 .matter-attachments-section {
     margin-bottom: 16px;
-    padding: 12px 14px;
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    border: none;
 }
 
 .matter-attachments-title {
     font-size: 13px;
     font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px dashed var(--border-color);
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    padding-bottom: 0;
+    border-bottom: none;
 }
 
 /* （已移至两栏布局区统一定义） */

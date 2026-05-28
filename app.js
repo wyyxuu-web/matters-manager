@@ -930,14 +930,14 @@ const App = {
         }
     },
 
-    // 每 2 秒自动轮询，实现多端数据同步
+    // 每 1 秒自动轮询，实现多端数据同步
     startPolling() {
         this.pollInterval = setInterval(async () => {
             if (this.currentView === 'list') {
                 const ok = await this.checkConnection();
                 if (ok) await this.render();
             }
-        }, 2000);
+        }, 1000);
     },
 
     // 停止轮询
