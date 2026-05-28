@@ -12,6 +12,7 @@ const App = {
     dateFilter: { start: '', end: '' },  // 日期筛选
     currentStatusFilter: 'all',          // 当前状态筛选
     pendingFiles: {},      // 新上传附件的临时存储（用于支持删除）
+    matterCache: [],       // 内存缓存，避免重复请求
 
     // 初始化
     async init() {
@@ -59,7 +60,9 @@ const App = {
 
     // 渲染事项列表
     async renderMatterList() {
-        let matters = await DataStore.getMatters();
+        const allMatters = await DataStore.getMatters();
+        this.matterCache = allMatters;  // 更新缓存
+        let matters = allMatters;
         
         // 应用日期筛选
         if (this.dateFilter.start) {
@@ -521,19 +524,29 @@ const App = {
 
     // 显示回复
     async showReplies(id) {
-        // 先切换视图，提升响应速度
+        // 先切换视图
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.getElementById('replies-view').classList.add('active');
         this.currentView = 'replies';
         
-        const matters = await DataStore.getMatters();
-        const matter = matters.find(m => m.id === id);
+        // 优先从缓存获取，同时异步刷新
+        let matter = this.matterCache.find(m => m.id === id);
         if (matter) {
             this.selectedMatter = matter;
-            // 标记回复已读
             localStorage.setItem(`matter_reply_count_${matter.id}`, (matter.replies || []).length);
             this.renderReplies(matter);
         }
+        
+        // 异步拉取最新数据，如有变化则刷新
+        DataStore.getMatters().then(matters => {
+            this.matterCache = matters;
+            const fresh = matters.find(m => m.id === id);
+            if (fresh && (!matter || fresh.updatedAt !== matter.updatedAt)) {
+                this.selectedMatter = fresh;
+                localStorage.setItem(`matter_reply_count_${fresh.id}`, (fresh.replies || []).length);
+                this.renderReplies(fresh);
+            }
+        });
     },
 
     // 渲染回复
@@ -763,24 +776,26 @@ const App = {
     // 按状态筛选（本地过滤）
     async filterByStatus(status) {
         this.currentStatusFilter = status;
-        let matters = await DataStore.getMatters();
+        const matters = await DataStore.getMatters();
+        this.matterCache = matters;  // 更新缓存
+        let filtered = matters;
         
         // 应用状态筛选
         if (status !== 'all') {
-            matters = matters.filter(m => m.status === status);
+            filtered = filtered.filter(m => m.status === status);
         }
         
         // 应用日期筛选
         if (this.dateFilter.start) {
-            matters = matters.filter(m => new Date(m.createdAt) >= new Date(this.dateFilter.start));
+            filtered = filtered.filter(m => new Date(m.createdAt) >= new Date(this.dateFilter.start));
         }
         if (this.dateFilter.end) {
-            matters = matters.filter(m => new Date(m.createdAt) <= new Date(this.dateFilter.end + 'T23:59:59'));
+            filtered = filtered.filter(m => new Date(m.createdAt) <= new Date(this.dateFilter.end + 'T23:59:59'));
         }
         
         const container = document.getElementById('matter-list');
 
-        if (matters.length === 0) {
+        if (filtered.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">🔍</div>
@@ -789,7 +804,7 @@ const App = {
             return;
         }
 
-        const sorted = [...matters].sort((a, b) => {
+        const sorted = [...filtered].sort((a, b) => {
             const order = { blocked: 0, pending: 1, in_progress: 2, completed: 3 };
             if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
             return new Date(b.createdAt) - new Date(a.createdAt);
