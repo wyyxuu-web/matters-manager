@@ -280,8 +280,11 @@ const App = {
         const target = document.getElementById(`${view}-view`);
         if (target) target.classList.add('active');
         this.currentView = view;
-        if (view === 'list') await this.render();
-        else if (view === 'settings') await this.loadSettings();
+        if (view === 'list') {
+            this.renderStats();
+            this.filterByStatus(this.currentStatusFilter);
+        }
+        else if (view === 'settings') this.loadSettings();
     },
 
     // 编辑事项
@@ -518,6 +521,11 @@ const App = {
 
     // 显示回复
     async showReplies(id) {
+        // 先切换视图，提升响应速度
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById('replies-view').classList.add('active');
+        this.currentView = 'replies';
+        
         const matters = await DataStore.getMatters();
         const matter = matters.find(m => m.id === id);
         if (matter) {
@@ -525,8 +533,6 @@ const App = {
             // 标记回复已读
             localStorage.setItem(`matter_reply_count_${matter.id}`, (matter.replies || []).length);
             this.renderReplies(matter);
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.getElementById('replies-view').classList.add('active');
         }
     },
 
