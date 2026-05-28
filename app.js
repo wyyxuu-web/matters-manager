@@ -162,6 +162,10 @@ const App = {
                     <span class="matter-status ${st.cls}">${st.text}</span>
                     ${followupTag}
                     <span class="matter-meta-inline">📅 ${createdDateStr}（${daysSinceCreated}天）${hasAttachments ? ' 📎' : ''}</span>
+                    <div class="matter-card-actions">
+                        <button class="card-action-btn card-edit-btn" data-action="edit" data-id="${matter.id}" title="编辑">✏️ 编辑</button>
+                        <button class="card-action-btn card-delete-btn" data-action="delete" data-id="${matter.id}" title="删除">🗑️ 删除</button>
+                    </div>
                 </div>
                 <div class="matter-content">${matter.content}</div>
                 ${hasAttachments ? this.renderAttachments(matter.attachments, 'card') : ''}
@@ -172,8 +176,6 @@ const App = {
                 </span>
                 <div class="matter-actions">
                     ${actionButtons}
-                    <button class="action-btn" data-action="edit" data-id="${matter.id}" title="编辑">✏️</button>
-                    <button class="action-btn delete-btn" data-action="delete" data-id="${matter.id}" title="删除">🗑️</button>
                 </div>
             </div>
         </div>`;
@@ -230,7 +232,12 @@ const App = {
             this.renderAttachmentPreview(e.target.files, 'reply-attachments-preview');
         });
         
-        document.getElementById('add-btn').addEventListener('click', () => this.switchView('add'));
+        document.getElementById('add-btn').addEventListener('click', () => {
+            // 强制清理编辑状态，确保是新建而非编辑
+            this.editingMatter = null;
+            this.resetForm();
+            this.switchView('add');
+        });
         document.getElementById('refresh-btn').addEventListener('click', () => this.refresh());
         document.getElementById('save-btn').addEventListener('click', () => this.saveMatter());
         document.getElementById('cancel-btn').addEventListener('click', () => this.switchView('list'));
@@ -272,10 +279,6 @@ const App = {
         this.currentView = view;
         if (view === 'list') await this.render();
         else if (view === 'settings') await this.loadSettings();
-        else if (view === 'add' && !this.editingMatter) {
-            // 新建时重置表单并设置今天为默认创建日期
-            this.resetForm();
-        }
     },
 
     // 编辑事项
