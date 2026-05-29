@@ -98,6 +98,11 @@ class MatterHandler(BaseHTTPRequestHandler):
             replies_resp = supabase.table('replies').select('*').eq('matter_id', matter['id']).order('created_at').execute()
             for reply_row in replies_resp.data:
                 reply = dict(reply_row)
+                # 转换日期字段为前端兼容的驼峰命名
+                if 'created_at' in reply:
+                    reply['createdAt'] = self._to_iso(reply.pop('created_at'))
+                if 'updated_at' in reply:
+                    reply['updatedAt'] = self._to_iso(reply.pop('updated_at'))
                 # 获取回复的附件
                 att_resp = supabase.table('attachments').select('*').eq('reply_id', reply['id']).execute()
                 reply['attachments'] = []
