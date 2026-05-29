@@ -136,6 +136,7 @@
                 <div class="data-actions">
                     <button type="button" id="export-btn" class="btn-outline">📥 导出 JSON</button>
                     <button type="button" id="export-excel-btn" class="btn-outline">📊 导出 Excel</button>
+                    <button type="button" id="export-zip-btn" class="btn-outline">📦 导出含附件ZIP</button>
                     <button type="button" id="clear-btn" class="btn-outline btn-danger">🗑️ 清空数据</button>
                 </div>
             </div>
@@ -193,10 +194,10 @@
                             <button type="submit" id="submit-reply-btn" class="btn btn-primary" style="flex:1;">提交回复</button>
                         </div>
                     </form>
-                    <!-- 返回按钮 -->
-                    <button type="button" class="btn btn-secondary btn-back-list" onclick="App.switchView('list')">← 返回列表</button>
                 </div>
             </div>
+            <!-- 返回按钮固定在右下角 -->
+            <button type="button" class="btn-back-fixed" onclick="App.switchView('list')" title="返回列表">← 返回列表</button>
         </div>
         
         <!-- 底部 Tab 导航 -->
@@ -211,6 +212,7 @@
     
     <!-- 引入脚本 -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="data-store.js?v=9"></script>
     <script src="scheduler.js?v=9"></script>
     <script src="app.js?v=9"></script>

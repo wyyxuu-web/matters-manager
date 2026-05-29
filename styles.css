@@ -1073,11 +1073,30 @@ body {
 .file-label-compact .file-hint { display: none; }
 .file-label-compact .file-text { font-size: 13px; color: var(--text-secondary); }
 
-/* 返回按钮 */
-.btn-back-list {
-    margin-top: auto;
-    width: 100%;
-    font-size: 13px;
+/* 返回按钮 - 固定在右下角 */
+.btn-back-fixed {
+    position: fixed;
+    bottom: 80px;
+    right: 28px;
+    padding: 12px 22px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+    transition: all 0.25s ease;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.btn-back-fixed:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
 }
 
 /* 空回复提示 */

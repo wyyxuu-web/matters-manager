@@ -251,6 +251,7 @@ const App = {
         document.getElementById('test-push-btn').addEventListener('click', () => Scheduler.manualPush());
         document.getElementById('export-btn').addEventListener('click', () => this.exportData());
         document.getElementById('export-excel-btn').addEventListener('click', () => this.exportExcel());
+        document.getElementById('export-zip-btn').addEventListener('click', () => this.exportZip());
         document.getElementById('clear-btn').addEventListener('click', async () => {
             if (confirm('确定要清空所有数据吗？此操作不可恢复！')) {
                 const matters = await DataStore.getMatters();
@@ -906,6 +907,112 @@ const App = {
         // 导出文件
         const fileName = `事项列表_${new Date().toISOString().split('T')[0]}.xlsx`;
         XLSX.writeFile(wb, fileName);
+    },
+
+    // 导出含附件的 ZIP 包
+    async exportZip() {
+        const btn = document.getElementById('export-zip-btn');
+        const originalText = btn.textContent;
+        btn.textContent = '打包中...';
+        btn.disabled = true;
+
+        try {
+            const matters = await DataStore.getMatters();
+            const zip = new JSZip();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const statusMap = {
+                pending: '待处理', in_progress: '进行中',
+                completed: '已完成', blocked: '遇问题'
+            };
+
+            // 按事项分组，创建附件目录
+            const attachmentsFolder = zip.folder('附件');
+
+            // 准备 Excel 数据
+            const data = matters.map((m, idx) => {
+                const created = new Date(m.createdAt);
+                created.setHours(0, 0, 0, 0);
+                const days = Math.floor((today - created) / (1000 * 60 * 60 * 24));
+                const replyCount = (m.replies || []).length;
+                const lastReply = (m.replies || []).slice(-1)[0];
+
+                // 收集该事项的所有附件文件名
+                const matterAttNames = (m.attachments || []).map(a => a.name);
+                const replyAttNames = [];
+                (m.replies || []).forEach(r => {
+                    (r.attachments || []).forEach(a => replyAttNames.push(a.name));
+                });
+                const allAttNames = [...matterAttNames, ...replyAttNames];
+
+                // 创建该事项的附件子目录
+                const safeName = `${idx + 1}-${m.content.substring(0, 30).replace(/[\\/:*?"<>|]/g, '_')}`;
+                const matterFolder = attachmentsFolder.folder(safeName);
+
+                // 添加事项附件
+                (m.attachments || []).forEach((att, attIdx) => {
+                    if (att.data) {
+                        const ext = att.name.split('.').pop() || 'file';
+                        const fileName = `事项附件_${attIdx + 1}_${att.name}`;
+                        matterFolder.file(fileName, att.data.split(',')[1] || att.data, { base64: true });
+                    }
+                });
+
+                // 添加回复附件
+                (m.replies || []).forEach((r, rIdx) => {
+                    (r.attachments || []).forEach((att, attIdx) => {
+                        if (att.data) {
+                            const fileName = `回复${rIdx + 1}_附件${attIdx + 1}_${att.name}`;
+                            matterFolder.file(fileName, att.data.split(',')[1] || att.data, { base64: true });
+                        }
+                    });
+                });
+
+                return [
+                    idx + 1,
+                    m.content,
+                    statusMap[m.status] || m.status,
+                    created.toLocaleDateString('zh-CN'),
+                    days,
+                    replyCount,
+                    lastReply ? `${lastReply.author}: ${lastReply.content.substring(0, 50)}...` : '',
+                    allAttNames.join('、')
+                ];
+            });
+
+            // 创建 Excel 工作表
+            const tableData = [
+                ['序号', '事项内容', '状态', '创建日期', '已跟进天数', '回复数', '最新回复', '附件列表'],
+                ...data
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(tableData);
+            ws['!cols'] = [
+                { wch: 6 }, { wch: 40 }, { wch: 10 },
+                { wch: 12 }, { wch: 12 }, { wch: 8 },
+                { wch: 40 }, { wch: 30 }
+            ];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '事项列表');
+
+            // Excel 加入 ZIP
+            const excelBuf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            zip.file(`事项列表_${new Date().toISOString().split('T')[0]}.xlsx`, excelBuf);
+
+            // 生成 ZIP 并下载
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `事项导出_${new Date().toISOString().split('T')[0]}.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('导出ZIP失败:', e);
+            alert('导出失败: ' + e.message);
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
     },
 
     // 回复界面标记完成
