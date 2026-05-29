@@ -774,11 +774,28 @@ const App = {
         await this.filterByStatus(status);
     },
 
-    // 按状态筛选（本地过滤）
+    // 按状态筛选（本地过滤，优先用缓存，秒开）
     async filterByStatus(status) {
         this.currentStatusFilter = status;
-        const matters = await DataStore.getMatters();
-        this.matterCache = matters;  // 更新缓存
+        
+        // 优先用缓存，无网络等待
+        let matters = this.matterCache.length > 0 ? this.matterCache : await DataStore.getMatters();
+        this._renderFilteredList(matters, status);
+        
+        // 后台静默拉最新数据，有变化再刷新
+        DataStore.getMatters().then(fresh => {
+            if (fresh.length !== this.matterCache.length || 
+                JSON.stringify(fresh.map(m => m.id + m.status + (m.replies||[]).length)) !== 
+                JSON.stringify(this.matterCache.map(m => m.id + m.status + (m.replies||[]).length))) {
+                this.matterCache = fresh;
+                this._renderFilteredList(fresh, status);
+            }
+        }).catch(() => {});
+    },
+
+    // 内部：渲染筛选后的列表
+    _renderFilteredList(matters, status) {
+        this.matterCache = matters;
         let filtered = matters;
         
         // 应用状态筛选
