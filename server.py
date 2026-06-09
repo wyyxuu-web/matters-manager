@@ -220,6 +220,32 @@ class MatterHandler(BaseHTTPRequestHandler):
                 self.send_json(500, {'success': False, 'error': str(e)})
             return
 
+        # 查询邀请码列表
+        if path == '/api/auth/invite-codes':
+            try:
+                resp = supabase.table('invite_codes').select('*').order('created_at', desc=True).execute()
+                codes = []
+                for row in resp.data:
+                    codes.append({
+                        'code': row['code'],
+                        'used_by': row.get('used_by'),
+                        'used_at': row.get('used_at'),
+                        'created_at': row['created_at']
+                    })
+                self.send_json(200, {'success': True, 'data': codes})
+            except Exception as e:
+                self.send_json(500, {'success': False, 'error': str(e)})
+            return
+
+        # 获取用户列表（管理员功能）
+        if path == '/api/auth/users':
+            try:
+                resp = supabase.table('users').select('id,username,role,created_at').order('created_at', desc=True).execute()
+                self.send_json(200, {'success': True, 'data': resp.data})
+            except Exception as e:
+                self.send_json(500, {'success': False, 'error': str(e)})
+            return
+
         # ====== 静态文件 ======
         if path == '/' or path == '':
             path = '/index.html'
