@@ -192,7 +192,7 @@ class MatterHandler(BaseHTTPRequestHandler):
         # 轻量事项列表（不含回复详情和附件数据，用于轮询）
         if path == '/api/matters/lite':
             try:
-                resp = supabase.table('matters').select('id,content,status,created_at,updated_at,created_by').order('created_at', desc=True).execute()
+                resp = supabase.table('matters').select('id,content,status,created_at,updated_at').order('created_at', desc=True).execute()
                 # 批量获取回复计数
                 if resp.data:
                     ids = [r['id'] for r in resp.data]
@@ -206,9 +206,6 @@ class MatterHandler(BaseHTTPRequestHandler):
                 for row in resp.data:
                     m = dict(row)
                     m['replyCount'] = reply_counts.get(m['id'], 0)
-                    # 转换字段名
-                    if 'created_by' in m:
-                        m['createdBy'] = m.pop('created_by')
                     m['createdAt'] = self._to_iso(m.pop('created_at', ''))
                     m['updatedAt'] = self._to_iso(m.pop('updated_at', ''))
                     matters.append(m)
