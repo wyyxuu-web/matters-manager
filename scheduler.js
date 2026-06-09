@@ -8,6 +8,8 @@ const Scheduler = {
     lastPushDate: null,
 
     init() {
+        // 防重复初始化：先清除旧定时器
+        if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
         this.lastPushDate = localStorage.getItem('matters_last_push_date') || null;
         this.startScheduler();
     },

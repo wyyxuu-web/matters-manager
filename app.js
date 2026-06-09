@@ -43,8 +43,8 @@ const App = {
     },
 
     // 渲染统计
-    async renderStats() {
-        const stats = await DataStore.getStats();
+    async renderStats(statsData) {
+        const stats = statsData || await DataStore.getStats();
         document.getElementById('stats-container').innerHTML = `
             <div class="stat-item" data-status="all" onclick="App.clickStatFilter('all')">
                 <span class="stat-number">${stats.total}</span>
@@ -101,15 +101,18 @@ const App = {
             return new Date(b.createdAt) - new Date(a.createdAt);
         });
 
+        // 保存/恢复滚动位置
+        const scrollTop = container.scrollTop;
         container.innerHTML = sorted.map(m => this.renderMatterCard(m)).join('');
         this.bindCardEvents();
+        if (scrollTop > 0) container.scrollTop = scrollTop;
     },
 
-    // 检查是否有新回复
+    // 检查是否有新回复（兼容轻量/完整格式）
     hasNewReply(matter) {
         const key = `matter_reply_count_${matter.id}`;
         const lastSeenCount = parseInt(localStorage.getItem(key) || '0', 10);
-        const currentCount = (matter.replies || []).length;
+        const currentCount = (matter.replies || []).length || matter.replyCount || 0;
         return currentCount > lastSeenCount;
     },
 
@@ -1142,11 +1145,11 @@ const App = {
     },
 
     // 按状态筛选（本地过滤，优先用缓存，秒开）
-    async filterByStatus(status) {
+    async filterByStatus(status, cachedMatters) {
         this.currentStatusFilter = status;
-        
-        // 优先用缓存，无网络等待
-        let matters = this.matterCache.length > 0 ? this.matterCache : await DataStore.getMatters();
+
+        // 优先用传入数据 > 缓存 > 网络
+        let matters = cachedMatters || (this.matterCache.length > 0 ? this.matterCache : await DataStore.getMatters());
         this._renderFilteredList(matters, status);
         
         // 后台静默拉最新数据，有变化再刷新
@@ -1160,16 +1163,16 @@ const App = {
         }).catch(() => {});
     },
 
-    // 内部：渲染筛选后的列表
+    // 内部：渲染筛选后的列表（带 diff 跳过和滚动保护）
     _renderFilteredList(matters, status) {
         this.matterCache = matters;
         let filtered = matters;
-        
+
         // 应用状态筛选
         if (status !== 'all') {
             filtered = filtered.filter(m => m.status === status);
         }
-        
+
         // 应用日期筛选
         if (this.dateFilter.start) {
             filtered = filtered.filter(m => new Date(m.createdAt) >= new Date(this.dateFilter.start));
@@ -1177,7 +1180,7 @@ const App = {
         if (this.dateFilter.end) {
             filtered = filtered.filter(m => new Date(m.createdAt) <= new Date(this.dateFilter.end + 'T23:59:59'));
         }
-        
+
         const container = document.getElementById('matter-list');
 
         if (filtered.length === 0) {
@@ -1195,8 +1198,19 @@ const App = {
             return new Date(b.createdAt) - new Date(a.createdAt);
         });
 
+        // 数据哈希比较，无变化则跳过 DOM 重绘
+        const newDataHash = sorted.map(m => m.id + '_' + m.status + '_' + ((m.replies || []).length || m.replyCount || 0)).join('|');
+        if (newDataHash === this._lastRenderHash && this.currentView === 'list') return;
+        this._lastRenderHash = newDataHash;
+
+        // 保存滚动位置
+        const scrollTop = container.scrollTop;
+
         container.innerHTML = sorted.map(m => this.renderMatterCard(m)).join('');
         this.bindCardEvents();
+
+        // 恢复滚动位置
+        if (scrollTop > 0) container.scrollTop = scrollTop;
     },
     
     // 日期筛选
@@ -1438,52 +1452,78 @@ const App = {
         }
     },
 
-    // 每 1 秒自动轮询，实现多端数据同步
+    // 每 5 秒自动轮询，合并请求减少后端压力
     startPolling() {
         this.pollInterval = setInterval(async () => {
-            if (this.currentView === 'list') {
-                const ok = await this.checkConnection();
-                if (ok) {
-                    await this.renderStats();
-                    await this.filterByStatus(this.currentStatusFilter);
+            try {
+                // 1. 只拉一次 stats，复用给 renderStats 和连接状态
+                const statsRes = await DataStore.getStats();
+                if (this.currentView === 'list') {
+                    this.renderStats(statsRes);
+                    this.updateConnectionIndicator(true);
+
+                    // 2. 只拉一次轻量 matters（不含回复详情和附件数据）
+                    const matters = await DataStore.getMattersLite();
+                    await this.filterByStatus(this.currentStatusFilter, matters);
+                    if (this.currentView !== 'replies') {
+                        this.checkNewReplies(matters);
+                    }
+                } else {
+                    // 非列表页也检查连接
+                    this.updateConnectionIndicator(!!statsRes.total);
                 }
+            } catch (e) {
+                // 网络异常时只更新连接指示器
+                this.updateConnectionIndicator(false);
             }
-            // 全局检查新回复通知（不在回复页时弹通知）
-            if (this.currentView !== 'replies') {
-                this.checkNewReplies();
-            }
-        }, 1000);
+        }, 5000);
     },
 
-        // 检查新回复并精准通知
-    async checkNewReplies() {
+    // 更新连接指示器（不再单独发请求）
+    updateConnectionIndicator(connected) {
+        const indicator = document.getElementById('conn-indicator');
+        if (indicator) {
+            indicator.textContent = connected ? '🟢' : '🔴';
+            indicator.title = connected ? '已连接' : '无连接';
+        }
+    },
+
+        // 检查新回复并精准通知（支持轻量数据）
+    async checkNewReplies(cachedMatters) {
         const user = DataStore.getCurrentUser();
         if (!user) return;
         try {
-            const matters = await DataStore.getMatters();
+            const matters = cachedMatters || await DataStore.getMattersLite();
+            // 兼容轻量格式(replyCount)和完整格式(replies数组)
+            const getCount = (m) => (m.replies || []).length || m.replyCount || 0;
             const currentMatterId = this.selectedMatter ? this.selectedMatter.id : null;
+
             for (const matter of matters) {
                 const key = `matter_reply_count_${matter.id}`;
                 const prevCount = parseInt(localStorage.getItem(key) || '0', 10);
-                const currCount = (matter.replies || []).length;
-                if (currCount > prevCount && prevCount > 0) {
-                    // 有新回复
-                    const latestReply = (matter.replies || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-                    const createdBy = matter.createdBy || '';
-                    const latestAuthor = latestReply.author || '匿名';
+                const currCount = getCount(matter);
 
+                if (currCount > prevCount && prevCount > 0) {
+                    // 有新回复 — 轻量模式下用通用通知，完整模式显示作者
+                    const createdBy = matter.createdBy || matter.created_by || '';
                     let message = '';
                     let shouldNotify = true;
 
-                    if (user.username === createdBy) {
-                        // 我是事项创建者，别人回复了我
-                        message = `${latestAuthor} 回复了你的事项：「${matter.content.slice(0, 30)}...`;
-                    } else if (user.username === latestAuthor) {
-                        // 我刚回复的，不通知
-                        shouldNotify = false;
+                    // 尝试从完整数据中获取最新回复者信息
+                    if (matter.replies && matter.replies.length > 0) {
+                        const latestReply = [...matter.replies].sort((a, b) => new Date(b.createdAt || b.updatedAt) - new Date(a.createdAt || a.updatedAt))[0];
+                        const latestAuthor = latestReply.author || '匿名';
+
+                        if (user.username === createdBy) {
+                            message = `${latestAuthor} 回复了你的事项：「${matter.content.slice(0, 30)}...`;
+                        } else if (user.username === latestAuthor) {
+                            shouldNotify = false;
+                        } else {
+                            message = `${latestAuthor} 也在跟进事项「${matter.content.slice(0, 30)}...`;
+                        }
                     } else {
-                        // 我参与的事项，别人也回复了
-                        message = `${latestAuthor} 也在跟进事项「${matter.content.slice(0, 30)}...`;
+                        // 轻量模式：只通知有新回复
+                        message = `事项「${matter.content.slice(0, 25)}...」有新回复`;
                     }
 
                     if (shouldNotify) {

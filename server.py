@@ -189,6 +189,52 @@ class MatterHandler(BaseHTTPRequestHandler):
                 self.send_json(500, {'success': False, 'error': str(e)})
             return
 
+        # 轻量事项列表（不含回复详情和附件数据，用于轮询）
+        if path == '/api/matters/lite':
+            try:
+                resp = supabase.table('matters').select('id,content,status,created_at,updated_at,created_by').order('created_at', desc=True).execute()
+                # 批量获取回复计数
+                if resp.data:
+                    ids = [r['id'] for r in resp.data]
+                    counts_resp = supabase.table('replies').select('matter_id').in_('matter_id', ids).execute()
+                    from collections import Counter
+                    reply_counts = Counter((r.get('matter_id') or '') for r in counts_resp.data)
+                else:
+                    reply_counts = {}
+
+                matters = []
+                for row in resp.data:
+                    m = dict(row)
+                    m['replyCount'] = reply_counts.get(m['id'], 0)
+                    # 转换字段名
+                    if 'created_by' in m:
+                        m['createdBy'] = m.pop('created_by')
+                    m['createdAt'] = self._to_iso(m.pop('created_at', ''))
+                    m['updatedAt'] = self._to_iso(m.pop('updated_at', ''))
+                    matters.append(m)
+
+                self.send_json(200, {'success': True, 'data': matters})
+            except Exception as e:
+                print(f"获取轻量事项失败: {e}")
+                self.send_json(500, {'success': False, 'error': str(e)})
+            return
+
+        # 回复计数（仅用于新回复通知检查）
+        if path == '/api/matters/reply-counts':
+            try:
+                resp = supabase.table('matters').select('id').execute()
+                if not resp.data:
+                    self.send_json(200, {'success': True, 'data': {}})
+                    return
+                ids = [r['id'] for r in resp.data]
+                counts_resp = supabase.table('replies').select('matter_id').in_('matter_id', ids).execute()
+                from collections import Counter
+                counts = Counter((r.get('matter_id') or '') for r in counts_resp.data)
+                self.send_json(200, {'success': True, 'data': dict(counts)})
+            except Exception as e:
+                self.send_json(500, {'success': False, 'error': str(e)})
+            return
+
         if path == '/api/settings':
             try:
                 resp = supabase.table('settings').select('*').execute()

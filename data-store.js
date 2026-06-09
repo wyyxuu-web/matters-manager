@@ -6,17 +6,22 @@
 const DataStore = {
     BASE_URL: '',  // 相对路径，自动适配 localhost 和局域网 IP
 
-    // 通用请求方法
+    // 通用请求方法（带15秒超时保护）
     async request(method, path, body) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         const opts = {
             method,
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal
         };
         if (body) opts.body = JSON.stringify(body);
         try {
             const res = await fetch(this.BASE_URL + path, opts);
+            clearTimeout(timeoutId);
             return await res.json();
         } catch (e) {
+            clearTimeout(timeoutId);
             console.error(`请求失败 [${method} ${path}]:`, e);
             return { success: false, error: e.message };
         }
@@ -26,6 +31,18 @@ const DataStore = {
     async getMatters() {
         const res = await this.request('GET', '/api/matters');
         return res.success ? res.data : [];
+    },
+
+    // 轻量事项列表（不含回复详情和附件，用于轮询）
+    async getMattersLite() {
+        const res = await this.request('GET', '/api/matters/lite');
+        return res.success ? res.data : [];
+    },
+
+    // 获取回复计数映射（用于新回复通知）
+    async getReplyCounts() {
+        const res = await this.request('GET', '/api/matters/reply-counts');
+        return res.success ? res.data : {};
     },
 
     // 添加事项
