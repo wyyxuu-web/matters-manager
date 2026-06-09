@@ -467,17 +467,19 @@ const App = {
     async handleGenerateInvite() {
         const btn = document.getElementById('generate-invite-btn');
         const resultEl = document.getElementById('invite-result');
+        const user = DataStore.getCurrentUser();
+        if (!user) return;
 
         btn.disabled = true;
         btn.textContent = '生成中...';
 
-        const res = await DataStore.generateInviteCode();
+        const res = await DataStore.generateInviteCode(user.username, user.role);
         if (res.success) {
             resultEl.textContent = `新邀请码：${res.data.code}`;
             // 刷新邀请码列表
             await this.renderInviteCodes();
         } else {
-            resultEl.textContent = '生成失败';
+            resultEl.textContent = res.error || '生成失败';
         }
 
         btn.disabled = false;
@@ -579,6 +581,20 @@ const App = {
         }
     },
 
+    // 根据角色显示/隐藏管理员专属功能
+    applyAdminVisibility() {
+        const user = DataStore.getCurrentUser();
+        const isAdmin = user && user.role === 'admin';
+        const inviteSection = document.getElementById('invite-management-section');
+        if (inviteSection) {
+            inviteSection.style.display = isAdmin ? '' : 'none';
+        }
+        const userSection = document.getElementById('user-management-section');
+        if (userSection) {
+            userSection.style.display = isAdmin ? 'block' : 'none';
+        }
+    },
+
     // 显示认证错误
     showAuthError(el, msg) {
         el.textContent = msg;
@@ -608,6 +624,7 @@ const App = {
             this.loadSettings();
             this.renderInviteCodes();
             this.renderUsers();
+            this.applyAdminVisibility();
         }
     },
 

@@ -117,9 +117,9 @@ const DataStore = {
         return res;
     },
 
-    // 生成邀请码
-    async generateInviteCode() {
-        const res = await this.request('GET', '/api/auth/generate-invite');
+    // 生成邀请码（需传当前用户信息校验权限）
+    async generateInviteCode(username, role) {
+        const res = await this.request('POST', '/api/auth/generate-invite', { username, role });
         return res;
     },
 

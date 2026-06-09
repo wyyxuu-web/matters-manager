@@ -220,18 +220,26 @@ class MatterHandler(BaseHTTPRequestHandler):
                 self.send_json(500, {'success': False, 'error': str(e)})
             return
 
-        # 生成邀请码
+        # 生成邀请码（仅管理员）
         if path == '/api/auth/generate-invite':
             try:
+                body = self.read_body()
+                username = (body.get('username') or '').strip()
+                role = (body.get('role') or '').strip()
+
+                # 校验管理员权限
+                if role != 'admin':
+                    self.send_json(403, {'success': False, 'error': '仅管理员可生成邀请码'})
+                    return
+
                 code_id = gen_id()
-                # 生成格式：matters-XXXX（方便识别）
                 code_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
                 code = f"MM-{code_suffix}"
 
                 supabase.table('invite_codes').insert({
                     'id': code_id,
                     'code': code,
-                    'created_by': 'admin'
+                    'created_by': username
                 }).execute()
 
                 self.send_json(201, {'success': True, 'data': {'code': code}})
