@@ -147,6 +147,18 @@ const DataStore = {
     logout() {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
+    },
+
+    // 获取用户列表（管理员功能）
+    async getUsers() {
+        const res = await this.request('GET', '/api/auth/users');
+        return res.success ? res.data : [];
+    },
+
+    // 删除用户（管理员功能）
+    async deleteUser(userId) {
+        const res = await this.request('POST', '/api/auth/delete-user', { userId });
+        return res;
     }
 };
 

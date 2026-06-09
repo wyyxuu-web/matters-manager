@@ -256,6 +256,15 @@ class MatterHandler(BaseHTTPRequestHandler):
                 self.send_json(500, {'success': False, 'error': str(e)})
             return
 
+        # 获取用户列表（管理员功能）
+        if path == '/api/auth/users':
+            try:
+                resp = supabase.table('users').select('id,username,role,created_at').order('created_at', desc=True).execute()
+                self.send_json(200, {'success': True, 'data': resp.data})
+            except Exception as e:
+                self.send_json(500, {'success': False, 'error': str(e)})
+            return
+
         # ====== 静态文件 ======
         if path == '/' or path == '':
             path = '/index.html'
@@ -400,6 +409,20 @@ class MatterHandler(BaseHTTPRequestHandler):
                 }).eq('username', username).execute()
 
                 self.send_json(200, {'success': True, 'message': '密码修改成功'})
+            except Exception as e:
+                self.send_json(500, {'success': False, 'error': str(e)})
+            return
+
+        # 删除用户（管理员功能）
+        if path == '/api/auth/delete-user':
+            body = self.read_body()
+            user_id = (body.get('userId') or '').strip()
+            if not user_id:
+                self.send_json(400, {'success': False, 'error': '缺少用户ID'})
+                return
+            try:
+                supabase.table('users').delete().eq('id', user_id).execute()
+                self.send_json(200, {'success': True, 'message': '用户已删除'})
             except Exception as e:
                 self.send_json(500, {'success': False, 'error': str(e)})
             return

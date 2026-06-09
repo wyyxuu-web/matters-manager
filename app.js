@@ -518,6 +518,67 @@ const App = {
         `;
     },
 
+    // 渲染用户列表（管理员功能）
+    async renderUsers() {
+        const user = DataStore.getCurrentUser();
+        const section = document.getElementById('user-management-section');
+        if (!user || user.role !== 'admin') {
+            if (section) section.style.display = 'none';
+            return;
+        }
+        section.style.display = 'block';
+
+        const users = await DataStore.getUsers();
+        const container = document.getElementById('users-list');
+
+        if (users.length === 0) {
+            container.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">暂无用户</div>';
+            return;
+        }
+
+        const currentUserId = user.id;
+        container.innerHTML = `
+            <table class="invite-table">
+                <thead>
+                    <tr>
+                        <th>用户名</th>
+                        <th>角色</th>
+                        <th>注册时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${users.map(u => `
+                        <tr>
+                            <td>${u.username}</td>
+                            <td><span class="role-badge role-${u.role}">${u.role === 'admin' ? '管理员' : '用户'}</span></td>
+                            <td>${u.created_at ? new Date(u.created_at).toLocaleString('zh-CN') : '-'}</td>
+                            <td>
+                                ${u.id !== currentUserId
+                                    ? `<button class="btn-outline btn-danger" style="padding:4px 12px; font-size:12px;" onclick="App.deleteUser('${u.id}', '${u.username}')">删除</button>`
+                                    : '<span style="color:var(--text-muted);font-size:12px;">当前账号</span>'
+                                }
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    },
+
+    // 删除用户
+    async deleteUser(userId, username) {
+        if (!confirm(`确定要删除用户「${username}」吗？此操作不可撤销。`)) return;
+
+        const res = await DataStore.deleteUser(userId);
+        if (res.success) {
+            this.showToast(`用户「${username}」已删除`);
+            this.renderUsers();
+        } else {
+            alert('删除失败：' + (res.error || '未知错误'));
+        }
+    },
+
     // 显示认证错误
     showAuthError(el, msg) {
         el.textContent = msg;
@@ -546,6 +607,7 @@ const App = {
         else if (view === 'settings') {
             this.loadSettings();
             this.renderInviteCodes();
+            this.renderUsers();
         }
     },
 
