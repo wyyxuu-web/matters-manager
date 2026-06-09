@@ -220,59 +220,6 @@ class MatterHandler(BaseHTTPRequestHandler):
                 self.send_json(500, {'success': False, 'error': str(e)})
             return
 
-        # 生成邀请码（仅管理员）
-        if path == '/api/auth/generate-invite':
-            try:
-                body = self.read_body()
-                username = (body.get('username') or '').strip()
-                role = (body.get('role') or '').strip()
-
-                # 校验管理员权限
-                if role != 'admin':
-                    self.send_json(403, {'success': False, 'error': '仅管理员可生成邀请码'})
-                    return
-
-                code_id = gen_id()
-                code_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-                code = f"MM-{code_suffix}"
-
-                supabase.table('invite_codes').insert({
-                    'id': code_id,
-                    'code': code,
-                    'created_by': username
-                }).execute()
-
-                self.send_json(201, {'success': True, 'data': {'code': code}})
-            except Exception as e:
-                self.send_json(500, {'success': False, 'error': str(e)})
-            return
-
-        # 查询邀请码列表
-        if path == '/api/auth/invite-codes':
-            try:
-                resp = supabase.table('invite_codes').select('*').order('created_at', desc=True).execute()
-                codes = []
-                for row in resp.data:
-                    codes.append({
-                        'code': row['code'],
-                        'used_by': row.get('used_by'),
-                        'used_at': row.get('used_at'),
-                        'created_at': row['created_at']
-                    })
-                self.send_json(200, {'success': True, 'data': codes})
-            except Exception as e:
-                self.send_json(500, {'success': False, 'error': str(e)})
-            return
-
-        # 获取用户列表（管理员功能）
-        if path == '/api/auth/users':
-            try:
-                resp = supabase.table('users').select('id,username,role,created_at').order('created_at', desc=True).execute()
-                self.send_json(200, {'success': True, 'data': resp.data})
-            except Exception as e:
-                self.send_json(500, {'success': False, 'error': str(e)})
-            return
-
         # ====== 静态文件 ======
         if path == '/' or path == '':
             path = '/index.html'
@@ -290,6 +237,33 @@ class MatterHandler(BaseHTTPRequestHandler):
         path = parsed.path
 
         # ====== 认证相关路由 ======
+
+        # 生成邀请码（仅管理员）
+        if path == '/api/auth/generate-invite':
+            body = self.read_body()
+            username = (body.get('username') or '').strip()
+            role = (body.get('role') or '').strip()
+
+            # 校验管理员权限
+            if role != 'admin':
+                self.send_json(403, {'success': False, 'error': '仅管理员可生成邀请码'})
+                return
+
+            try:
+                code_id = gen_id()
+                code_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+                code = f"MM-{code_suffix}"
+
+                supabase.table('invite_codes').insert({
+                    'id': code_id,
+                    'code': code,
+                    'created_by': username
+                }).execute()
+
+                self.send_json(201, {'success': True, 'data': {'code': code}})
+            except Exception as e:
+                self.send_json(500, {'success': False, 'error': str(e)})
+            return
 
         # 注册
         if path == '/api/auth/register':
