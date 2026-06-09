@@ -4,3 +4,4 @@ __pycache__/
 matters_data.json
 *.db
 .env
+*.bak

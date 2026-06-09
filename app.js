@@ -16,11 +16,22 @@ const App = {
 
     // 初始化
     async init() {
+        // 认证事件始终绑定（无论是否登录都需要）
+        this.bindAuthEvents();
+
+        // 先检查登录状态
+        if (!DataStore.getCurrentUser()) {
+            this.showLogin();
+            return;
+        }
+        // 已登录，显示主界面
+        document.getElementById('login-view').classList.remove('active');
+        document.getElementById('main-app').style.display = 'block';
         await this.checkConnection();
         await this.render();
         Scheduler.init();
         this.bindEvents();
-        this.startPolling(); // 每2秒自动刷新，实现多端同步
+        this.startPolling();
     },
 
     // 渲染界面
@@ -166,7 +177,7 @@ const App = {
                     <span class="matter-status ${st.cls}">${st.text}</span>
                     ${followupTag}
                     <div class="matter-header-right">
-                        <span class="matter-meta-inline">📅 ${createdDateStr}（${daysSinceCreated}天）${hasAttachments ? ' 📎' : ''}</span>
+                        <span class="matter-meta-inline">📅 ${createdDateStr}（${daysSinceCreated}天）${hasAttachments ? ' 📎' : ''} ${matter.createdBy ? `<span style="color:#999;font-size:12px;">· ${matter.createdBy}</span>` : ''}</span>
                         <div class="matter-card-actions">
                             <button class="card-action-btn card-edit-btn" data-action="edit" data-id="${matter.id}" title="编辑">✏️ 编辑</button>
                             <button class="card-action-btn card-delete-btn" data-action="delete" data-id="${matter.id}" title="删除">🗑️ 删除</button>
@@ -269,13 +280,257 @@ const App = {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.quick-status-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                // 同步高亮统计卡片
                 document.querySelectorAll('.stat-item').forEach(s => {
                     s.classList.toggle('active', s.dataset.status === btn.dataset.status);
                 });
                 this.filterByStatus(btn.dataset.status);
             });
         });
+    },
+
+    // 绑定认证事件
+    bindAuthEvents() {
+        // 登录
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleLogin();
+            });
+        }
+
+        // 注册
+        const registerForm = document.getElementById('register-form');
+        if (registerForm) {
+            registerForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleRegister();
+            });
+        }
+
+        // 导航链接
+        const goRegister = document.getElementById('go-register-link');
+        if (goRegister) {
+            goRegister.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showRegister();
+            });
+        }
+        const goLogin = document.getElementById('go-login-link');
+        if (goLogin) {
+            goLogin.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.showLogin();
+            });
+        }
+
+        // 修改密码
+        const cpForm = document.getElementById('change-password-form');
+        if (cpForm) {
+            cpForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleChangePassword();
+            });
+        }
+
+        // 生成邀请码
+        const genInviteBtn = document.getElementById('generate-invite-btn');
+        if (genInviteBtn) {
+            genInviteBtn.addEventListener('click', () => this.handleGenerateInvite());
+        }
+    },
+
+    // 显示登录页
+    showLogin() {
+        document.getElementById('main-app').style.display = 'none';
+        document.getElementById('login-view').classList.add('active');
+        document.getElementById('register-view').classList.remove('active');
+    },
+
+    // 显示注册页
+    showRegister() {
+        document.getElementById('main-app').style.display = 'none';
+        document.getElementById('login-view').classList.remove('active');
+        document.getElementById('register-view').classList.add('active');
+    },
+
+    // 处理登录
+    async handleLogin() {
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value.trim();
+        const errorEl = document.getElementById('login-error');
+
+        if (!username || !password) {
+            this.showAuthError(errorEl, '请输入用户名和密码');
+            return;
+        }
+
+        const btn = document.querySelector('#login-form .auth-btn');
+        btn.disabled = true;
+        btn.textContent = '登录中...';
+
+        const res = await DataStore.login(username, password);
+        if (res.success) {
+            // 登录成功，显示主界面
+            document.getElementById('login-view').classList.remove('active');
+            document.getElementById('main-app').style.display = 'block';
+            await this.checkConnection();
+            await this.render();
+            Scheduler.init();
+            this.startPolling();
+        } else {
+            this.showAuthError(errorEl, res.error || '登录失败');
+        }
+
+        btn.disabled = false;
+        btn.textContent = '登录';
+    },
+
+    // 处理注册
+    async handleRegister() {
+        const username = document.getElementById('reg-username').value.trim();
+        const password = document.getElementById('reg-password').value.trim();
+        const inviteCode = document.getElementById('reg-invite-code').value.trim();
+        const errorEl = document.getElementById('register-error');
+        const successEl = document.getElementById('register-success');
+
+        errorEl.style.display = 'none';
+        successEl.style.display = 'none';
+
+        if (!username || !password || !inviteCode) {
+            this.showAuthError(errorEl, '请填写所有字段');
+            return;
+        }
+        if (password.length < 4) {
+            this.showAuthError(errorEl, '密码长度至少4位');
+            return;
+        }
+
+        const btn = document.querySelector('#register-form .auth-btn');
+        btn.disabled = true;
+        btn.textContent = '注册中...';
+
+        const res = await DataStore.register(username, password, inviteCode);
+        if (res.success) {
+            successEl.textContent = '注册成功！请返回登录页面登录。';
+            successEl.style.display = 'block';
+            document.getElementById('register-form').reset();
+        } else {
+            this.showAuthError(errorEl, res.error || '注册失败');
+        }
+
+        btn.disabled = false;
+        btn.textContent = '注册';
+    },
+
+    // 处理修改密码
+    async handleChangePassword() {
+        const user = DataStore.getCurrentUser();
+        if (!user) return;
+
+        const oldPassword = document.getElementById('cp-old-password').value.trim();
+        const newPassword = document.getElementById('cp-new-password').value.trim();
+        const errorEl = document.getElementById('cp-error');
+        const successEl = document.getElementById('cp-success');
+
+        errorEl.style.display = 'none';
+        successEl.style.display = 'none';
+
+        if (!oldPassword || !newPassword) {
+            this.showAuthError(errorEl, '请填写原密码和新密码');
+            return;
+        }
+        if (newPassword.length < 4) {
+            this.showAuthError(errorEl, '新密码长度至少4位');
+            return;
+        }
+
+        const btn = document.getElementById('change-password-btn');
+        btn.disabled = true;
+        btn.textContent = '修改中...';
+
+        const res = await DataStore.changePassword(user.username, oldPassword, newPassword);
+        if (res.success) {
+            successEl.textContent = '密码修改成功';
+            successEl.style.display = 'block';
+            document.getElementById('change-password-form').reset();
+            setTimeout(() => { successEl.style.display = 'none'; }, 3000);
+        } else {
+            this.showAuthError(errorEl, res.error || '修改失败');
+        }
+
+        btn.disabled = false;
+        btn.textContent = '修改密码';
+    },
+
+    // 处理生成邀请码
+    async handleGenerateInvite() {
+        const btn = document.getElementById('generate-invite-btn');
+        const resultEl = document.getElementById('invite-result');
+
+        btn.disabled = true;
+        btn.textContent = '生成中...';
+
+        const res = await DataStore.generateInviteCode();
+        if (res.success) {
+            resultEl.textContent = `新邀请码：${res.data.code}`;
+            // 刷新邀请码列表
+            await this.renderInviteCodes();
+        } else {
+            resultEl.textContent = '生成失败';
+        }
+
+        btn.disabled = false;
+        btn.textContent = '生成邀请码';
+    },
+
+    // 渲染邀请码列表
+    async renderInviteCodes() {
+        const codes = await DataStore.getInviteCodes();
+        const container = document.getElementById('invite-codes-list');
+
+        if (codes.length === 0) {
+            container.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">暂无邀请码</div>';
+            return;
+        }
+
+        container.innerHTML = `
+            <table class="invite-table">
+                <thead>
+                    <tr>
+                        <th>邀请码</th>
+                        <th>状态</th>
+                        <th>使用者</th>
+                        <th>使用时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${codes.map(c => `
+                        <tr>
+                            <td><code>${c.code}</code></td>
+                            <td><span class="invite-status ${c.used_by ? 'used' : 'available'}">${c.used_by ? '已使用' : '可用'}</span></td>
+                            <td>${c.used_by || '-'}</td>
+                            <td>${c.used_at ? new Date(c.used_at).toLocaleString('zh-CN') : '-'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    },
+
+    // 显示认证错误
+    showAuthError(el, msg) {
+        el.textContent = msg;
+        el.style.display = 'block';
+    },
+
+    // 退出登录
+    logout() {
+        DataStore.logout();
+        this.stopPolling();
+        this.showLogin();
+        document.getElementById('login-username').value = '';
+        document.getElementById('login-password').value = '';
     },
 
     // 切换视图
@@ -288,7 +543,10 @@ const App = {
             this.renderStats();
             this.filterByStatus(this.currentStatusFilter);
         }
-        else if (view === 'settings') this.loadSettings();
+        else if (view === 'settings') {
+            this.loadSettings();
+            this.renderInviteCodes();
+        }
     },
 
     // 编辑事项
@@ -376,8 +634,10 @@ const App = {
             matterData.createdAt = this.editingMatter.createdAt;
             await DataStore.updateMatter(this.editingMatter.id, matterData);
         } else {
-            // 新建时设置创建日期
+            // 新建时设置创建日期，记录创建者
             matterData.createdAt = createdDate + 'T' + new Date().toTimeString().slice(0, 8);
+            const user = DataStore.getCurrentUser();
+            if (user) matterData.createdBy = user.username;
             await DataStore.addMatter(matterData);
         }
 
@@ -548,6 +808,27 @@ const App = {
                 this.renderReplies(fresh);
             }
         });
+
+        // 设置回复作者输入框权限
+        this.setupReplyAuthor();
+    },
+
+    // 设置回复作者输入框（普通用户锁定为用户名，管理员可编辑）
+    setupReplyAuthor() {
+        const user = DataStore.getCurrentUser();
+        if (!user) return;
+        const authorInput = document.getElementById('reply-author');
+        if (!authorInput) return;
+        if (user.role === 'admin') {
+            authorInput.readOnly = false;
+            authorInput.placeholder = '回复者姓名（可编辑）';
+            if (!authorInput.value) authorInput.value = user.username;
+        } else {
+            authorInput.readOnly = true;
+            authorInput.value = user.username;
+            authorInput.style.background = '#f5f5f5';
+            authorInput.title = '名字已锁定为你的用户名';
+        }
     },
 
     // 渲染回复
@@ -654,6 +935,9 @@ const App = {
         const titleEl = document.getElementById('reply-form-title');
         if (titleEl) titleEl.textContent = '✏️ 编辑回复';
         document.getElementById('reply-form').scrollIntoView({ behavior: 'smooth' });
+
+        // 编辑模式下也遵守权限
+        this.setupReplyAuthor();
     },
     
     // 取消编辑回复
@@ -661,10 +945,14 @@ const App = {
         this.editingReplyId = null;
         document.getElementById('reply-content').value = '';
         document.getElementById('reply-author').value = '';
+        document.getElementById('reply-author').readOnly = false;
+        document.getElementById('reply-author').style.background = '';
         document.getElementById('submit-reply-btn').textContent = '提交回复';
         document.getElementById('cancel-reply-edit-btn').style.display = 'none';
         const titleEl = document.getElementById('reply-form-title');
         if (titleEl) titleEl.textContent = '✏️ 添加回复';
+        // 恢复输入框权限
+        this.setupReplyAuthor();
     },
     
     // 删除回复
@@ -1081,7 +1369,83 @@ const App = {
                     await this.filterByStatus(this.currentStatusFilter);
                 }
             }
+            // 全局检查新回复通知（不在回复页时弹通知）
+            if (this.currentView !== 'replies') {
+                this.checkNewReplies();
+            }
         }, 1000);
+    },
+
+        // 检查新回复并精准通知
+    async checkNewReplies() {
+        const user = DataStore.getCurrentUser();
+        if (!user) return;
+        try {
+            const matters = await DataStore.getMatters();
+            const currentMatterId = this.selectedMatter ? this.selectedMatter.id : null;
+            for (const matter of matters) {
+                const key = `matter_reply_count_${matter.id}`;
+                const prevCount = parseInt(localStorage.getItem(key) || '0', 10);
+                const currCount = (matter.replies || []).length;
+                if (currCount > prevCount && prevCount > 0) {
+                    // 有新回复
+                    const latestReply = (matter.replies || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+                    const createdBy = matter.createdBy || '';
+                    const latestAuthor = latestReply.author || '匿名';
+
+                    let message = '';
+                    let shouldNotify = true;
+
+                    if (user.username === createdBy) {
+                        // 我是事项创建者，别人回复了我
+                        message = `${latestAuthor} 回复了你的事项：「${matter.content.slice(0, 30)}...`;
+                    } else if (user.username === latestAuthor) {
+                        // 我刚回复的，不通知
+                        shouldNotify = false;
+                    } else {
+                        // 我参与的事项，别人也回复了
+                        message = `${latestAuthor} 也在跟进事项「${matter.content.slice(0, 30)}...`;
+                    }
+
+                    if (shouldNotify) {
+                        // 如果当前正在查看该事项，不弹通知（已在回复页）
+                        if (this.currentView === 'replies' && currentMatterId === matter.id) {
+                            // 静默标记已读
+                        } else {
+                            this.showToast(message);
+                            this.tryNotify(message);
+                        }
+                    }
+                    localStorage.setItem(key, currCount);
+                } else if (currCount !== prevCount) {
+                    localStorage.setItem(key, currCount);
+                }
+            }
+            // 同步更新缓存
+            this.matterCache = matters;
+        } catch (e) {}
+    },
+
+    // 页面内 toast 提示
+    showToast(message) {
+        const old = document.querySelector('.reply-toast');
+        if (old) old.remove();
+        const el = document.createElement('div');
+        el.className = 'reply-toast';
+        el.textContent = message;
+        el.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 24px;border-radius:8px;z-index:10001;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.2);animation:toastIn .3s ease-out;';
+        document.body.appendChild(el);
+        setTimeout(() => { if (el.parentNode) el.remove(); }, 4000);
+    },
+
+    // 尝试浏览器通知
+    tryNotify(message) {
+        if (!('Notification' in window)) return;
+        if (Notification.permission === 'granted') {
+            new Notification('事项跟进提醒', { body: message, icon: '📋' });
+        } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission();
+        }
     },
 
     // 停止轮询

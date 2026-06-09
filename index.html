@@ -8,6 +8,60 @@
 </head>
 <body>
     <div class="app-container">
+        <!-- 登录视图 -->
+        <div id="login-view" class="view active">
+            <div class="auth-container">
+                <div class="auth-card">
+                    <h1 class="auth-title">事项跟进管理系统</h1>
+                    <p class="auth-subtitle">请登录以继续</p>
+                    <form id="login-form" class="auth-form">
+                        <div class="form-group">
+                            <label class="form-label">用户名</label>
+                            <input type="text" id="login-username" class="form-input" placeholder="请输入用户名" autocomplete="username">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">密码</label>
+                            <input type="password" id="login-password" class="form-input" placeholder="请输入密码" autocomplete="current-password">
+                        </div>
+                        <div id="login-error" class="auth-error" style="display:none;"></div>
+                        <button type="submit" class="btn btn-primary auth-btn">登录</button>
+                    </form>
+                    <p class="auth-footer">没有账号？<a href="#" id="go-register-link">注册</a></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 注册视图 -->
+        <div id="register-view" class="view">
+            <div class="auth-container">
+                <div class="auth-card">
+                    <h1 class="auth-title">注册新账号</h1>
+                    <p class="auth-subtitle">需要有效的邀请码才能注册</p>
+                    <form id="register-form" class="auth-form">
+                        <div class="form-group">
+                            <label class="form-label">用户名</label>
+                            <input type="text" id="reg-username" class="form-input" placeholder="请设置用户名" autocomplete="username">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">密码</label>
+                            <input type="password" id="reg-password" class="form-input" placeholder="请设置密码（至少4位）" autocomplete="new-password">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">邀请码</label>
+                            <input type="text" id="reg-invite-code" class="form-input" placeholder="请输入邀请码">
+                        </div>
+                        <div id="register-error" class="auth-error" style="display:none;"></div>
+                        <div id="register-success" class="auth-success" style="display:none;"></div>
+                        <button type="submit" class="btn btn-primary auth-btn">注册</button>
+                    </form>
+                    <p class="auth-footer">已有账号？<a href="#" id="go-login-link">返回登录</a></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主应用容器（登录后可见） -->
+        <div id="main-app" style="display:none;">
+        
         <!-- 头部 -->
         <header class="app-header">
             <h1 class="app-title">
@@ -140,6 +194,34 @@
                     <button type="button" id="clear-btn" class="btn-outline btn-danger">🗑️ 清空数据</button>
                 </div>
             </div>
+
+            <div class="settings-section">
+                <h3 class="settings-title">🔑 修改密码</h3>
+                <form id="change-password-form">
+                    <div class="form-group">
+                        <label class="form-label">原密码</label>
+                        <input type="password" id="cp-old-password" class="form-input" placeholder="请输入原密码" autocomplete="current-password">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">新密码</label>
+                        <input type="password" id="cp-new-password" class="form-input" placeholder="请输入新密码（至少4位）" autocomplete="new-password">
+                    </div>
+                    <div id="cp-error" class="auth-error" style="display:none;"></div>
+                    <div id="cp-success" class="auth-success" style="display:none;"></div>
+                    <div class="form-actions" style="margin-top: 12px;">
+                        <button type="submit" id="change-password-btn" class="btn btn-primary">修改密码</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="settings-section">
+                <h3 class="settings-title">📨 邀请码管理</h3>
+                <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px;">
+                    <button type="button" id="generate-invite-btn" class="btn btn-primary">生成邀请码</button>
+                    <span id="invite-result" style="font-size:14px; font-weight:500; color:var(--primary);"></span>
+                </div>
+                <div id="invite-codes-list"></div>
+            </div>
         </div>
         
         <!-- 回复视图 -->
@@ -201,13 +283,15 @@
         </div>
         
         <!-- 底部 Tab 导航 -->
-        <div style="position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 12px; display: flex; justify-content: center; gap: 24px;">
+        <div style="position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 12px; display: flex; justify-content: center; gap: 24px; align-items: center;">
             <button class="tab-nav-btn active" data-tab="list" onclick="App.switchView('list')">📋 事项</button>
             <button class="tab-nav-btn" data-tab="settings" onclick="App.switchView('settings')">⚙️ 设置</button>
+            <button class="tab-nav-btn" onclick="App.logout()" style="color: var(--danger); border-color: var(--danger);">🚪 退出</button>
         </div>
         
         <!-- 底部留白（适配固定导航） -->
         <div style="height: 80px;"></div>
+        </div><!-- end main-app -->
     </div>
     
     <!-- 引入脚本 -->

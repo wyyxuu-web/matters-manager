@@ -91,6 +91,62 @@ const DataStore = {
     async updateSettings(settings) {
         const res = await this.request('PUT', '/api/settings', settings);
         return res.success ? res.data : null;
+    },
+
+    // ====== 认证相关 ======
+
+    // 注册
+    async register(username, password, inviteCode) {
+        const res = await this.request('POST', '/api/auth/register', { username, password, inviteCode });
+        return res;
+    },
+
+    // 登录
+    async login(username, password) {
+        const res = await this.request('POST', '/api/auth/login', { username, password });
+        if (res.success) {
+            localStorage.setItem('auth_token', res.data.token);
+            localStorage.setItem('auth_user', JSON.stringify(res.data.user));
+        }
+        return res;
+    },
+
+    // 修改密码
+    async changePassword(username, oldPassword, newPassword) {
+        const res = await this.request('POST', '/api/auth/change-password', { username, oldPassword, newPassword });
+        return res;
+    },
+
+    // 生成邀请码
+    async generateInviteCode() {
+        const res = await this.request('GET', '/api/auth/generate-invite');
+        return res;
+    },
+
+    // 获取邀请码列表
+    async getInviteCodes() {
+        const res = await this.request('GET', '/api/auth/invite-codes');
+        return res.success ? res.data : [];
+    },
+
+    // 获取当前登录用户
+    getCurrentUser() {
+        try {
+            return JSON.parse(localStorage.getItem('auth_user'));
+        } catch {
+            return null;
+        }
+    },
+
+    // 获取 token
+    getToken() {
+        return localStorage.getItem('auth_token');
+    },
+
+    // 登出
+    logout() {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
     }
 };
 
