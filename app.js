@@ -727,6 +727,9 @@ const App = {
         btn.textContent = '保存';
         this.resetForm();
         this.pendingFiles['matter-attachments-preview'] = [];
+        // 清缓存，确保切回列表时拉取最新数据（含新增事项）
+        this.matterCache = [];
+        this._lastRenderHash = null;
         await this.switchView('list');
     },
 
