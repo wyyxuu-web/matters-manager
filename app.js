@@ -158,7 +158,7 @@ const App = {
         
         const createdDateStr = createdDate.toLocaleDateString('zh-CN');
         const hasAttachments = matter.attachments && matter.attachments.length > 0;
-        const replyCount = (matter.replies || []).length;
+        const replyCount = (matter.replies || []).length || matter.replyCount || 0;
         const hasNew = this.hasNewReply(matter);
         const newBadge = hasNew ? '<span class="new-reply-badge" title="有新回复">●</span>' : '';
 
@@ -879,7 +879,7 @@ const App = {
         let matter = this.matterCache.find(m => m.id === id);
         if (matter) {
             this.selectedMatter = matter;
-            localStorage.setItem(`matter_reply_count_${matter.id}`, (matter.replies || []).length);
+            localStorage.setItem(`matter_reply_count_${matter.id}`, (matter.replies || []).length || matter.replyCount || 0);
             this.renderReplies(matter);
         }
         
