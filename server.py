@@ -486,14 +486,13 @@ class MatterHandler(BaseHTTPRequestHandler):
             matter_id = gen_id()
 
             try:
-                created_by = body.get('createdBy', '')
+                # 注意：matters 表无 created_by 列，不插入该字段
                 supabase.table('matters').insert({
                     'id': matter_id,
                     'content': body.get('content', ''),
                     'status': 'pending',
                     'created_at': created_at,
-                    'updated_at': now,
-                    'created_by': created_by
+                    'updated_at': now
                 }).execute()
 
                 # 保存附件
