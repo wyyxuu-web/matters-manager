@@ -1503,39 +1503,15 @@ const App = {
                 const prevCount = parseInt(localStorage.getItem(key) || '0', 10);
                 const currCount = getCount(matter);
 
-                if (currCount > prevCount && prevCount > 0) {
-                    // 有新回复 — 轻量模式下用通用通知，完整模式显示作者
-                    const createdBy = matter.createdBy || matter.created_by || '';
-                    let message = '';
-                    let shouldNotify = true;
-
-                    // 尝试从完整数据中获取最新回复者信息
-                    if (matter.replies && matter.replies.length > 0) {
-                        const latestReply = [...matter.replies].sort((a, b) => new Date(b.createdAt || b.updatedAt) - new Date(a.createdAt || a.updatedAt))[0];
-                        const latestAuthor = latestReply.author || '匿名';
-
-                        if (user.username === createdBy) {
-                            message = `${latestAuthor} 回复了你的事项：「${matter.content.slice(0, 30)}...`;
-                        } else if (user.username === latestAuthor) {
-                            shouldNotify = false;
-                        } else {
-                            message = `${latestAuthor} 也在跟进事项「${matter.content.slice(0, 30)}...`;
-                        }
+                    if (currCount > prevCount && prevCount > 0) {
+                    // 有新回复 — 只更新 localStorage 计数，红点由 renderMatterCard 自动显示
+                    // 不弹 toast/通知，保持界面简洁
+                    if (this.currentView === 'replies' && currentMatterId === matter.id) {
+                        // 正在查看该事项，静默标记已读
+                        localStorage.setItem(key, currCount);
                     } else {
-                        // 轻量模式：只通知有新回复
-                        message = `事项「${matter.content.slice(0, 25)}...」有新回复`;
+                        localStorage.setItem(key, currCount);
                     }
-
-                    if (shouldNotify) {
-                        // 如果当前正在查看该事项，不弹通知（已在回复页）
-                        if (this.currentView === 'replies' && currentMatterId === matter.id) {
-                            // 静默标记已读
-                        } else {
-                            this.showToast(message);
-                            this.tryNotify(message);
-                        }
-                    }
-                    localStorage.setItem(key, currCount);
                 } else if (currCount !== prevCount) {
                     localStorage.setItem(key, currCount);
                 }
