@@ -278,6 +278,68 @@ const App = {
             await this.submitReply();
         });
 
+        // ===== 拖拽上传 =====
+        document.querySelectorAll('.file-upload-container').forEach(container => {
+            let dragCounter = 0;
+
+            container.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                dragCounter++;
+                container.classList.add('drag-over');
+            });
+
+            container.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+            });
+
+            container.addEventListener('dragleave', () => {
+                dragCounter--;
+                if (dragCounter <= 0) {
+                    dragCounter = 0;
+                    container.classList.remove('drag-over');
+                }
+            });
+
+            container.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dragCounter = 0;
+                container.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                if (!files || files.length === 0) return;
+                const inputEl = container.querySelector('input[type="file"]');
+                const containerId = inputEl.id === 'matter-attachments'
+                    ? 'matter-attachments-preview' : 'reply-attachments-preview';
+                this.renderAttachmentPreview(files, containerId);
+            });
+        });
+
+        // ===== 粘贴上传 =====
+        document.addEventListener('paste', (e) => {
+            // 只在表单页面处理粘贴图片
+            const addView = document.getElementById('add-view');
+            const replySection = document.getElementById('reply-section');
+            const isInForm = (addView && getComputedStyle(addView).display !== 'none')
+                || (replySection && getComputedStyle(replySection).display !== 'none');
+            if (!isInForm) return;
+
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            const imageFiles = [];
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) imageFiles.push(file);
+                }
+            }
+            if (imageFiles.length === 0) return;
+
+            e.preventDefault(); // 阻止浏览器默认粘贴图片行为
+            const containerId = (replySection && getComputedStyle(replySection).display !== 'none')
+                ? 'reply-attachments-preview' : 'matter-attachments-preview';
+            this.renderAttachmentPreview(imageFiles, containerId);
+        });
+
         // 状态筛选按钮
         document.querySelectorAll('.quick-status-btn').forEach(btn => {
             btn.addEventListener('click', () => {
