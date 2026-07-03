@@ -246,6 +246,51 @@ body {
     color: var(--primary);
 }
 
+/* ========== 搜索栏 ========== */
+.search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    transition: border-color 0.2s;
+    outline: none;
+}
+
+.search-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+}
+
+.search-input::placeholder {
+    color: var(--text-secondary);
+}
+
+.search-clear-btn {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    transition: color 0.15s, background 0.15s;
+}
+
+.search-clear-btn:hover {
+    color: var(--text-primary);
+    background: var(--hover-bg);
+}
+
 /* ========== 跟进标签 ========== */
 .followup-tag {
     padding: 2px 8px;

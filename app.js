@@ -11,6 +11,7 @@ const App = {
     pollInterval: null,
     dateFilter: { start: '', end: '' },  // 日期筛选
     currentStatusFilter: 'all',          // 当前状态筛选
+    searchQuery: '',                      // 搜索关键词
     pendingFiles: {},      // 新上传附件的临时存储（用于支持删除）
     matterCache: [],       // 内存缓存，避免重复请求
 
@@ -350,6 +351,28 @@ const App = {
                 });
                 this.filterByStatus(btn.dataset.status);
             });
+        });
+
+        // 搜索（防抖 300ms）
+        const searchInput = document.getElementById('search-input');
+        const searchClear = document.getElementById('search-clear-btn');
+        let searchTimer;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                this.searchQuery = searchInput.value.trim();
+                searchClear.style.display = this.searchQuery ? 'inline-block' : 'none';
+                this._lastRenderHash = null; // 强制刷新
+                this.filterByStatus(this.currentStatusFilter);
+            }, 300);
+        });
+        searchClear.addEventListener('click', () => {
+            searchInput.value = '';
+            this.searchQuery = '';
+            searchClear.style.display = 'none';
+            this._lastRenderHash = null;
+            this.filterByStatus(this.currentStatusFilter);
+            searchInput.focus();
         });
     },
 
@@ -1246,6 +1269,12 @@ const App = {
             filtered = filtered.filter(m => new Date(m.createdAt) <= new Date(this.dateFilter.end + 'T23:59:59'));
         }
 
+        // 应用搜索筛选（内容关键字，不区分大小写）
+        if (this.searchQuery) {
+            const q = this.searchQuery.toLowerCase();
+            filtered = filtered.filter(m => m.content && m.content.toLowerCase().includes(q));
+        }
+
         const container = document.getElementById('matter-list');
 
         if (filtered.length === 0) {
@@ -1264,7 +1293,7 @@ const App = {
         });
 
         // 数据哈希比较，无变化则跳过 DOM 重绘
-        const newDataHash = sorted.map(m => m.id + '_' + m.status + '_' + ((m.replies || []).length || m.replyCount || 0)).join('|');
+        const newDataHash = this.searchQuery + '|' + sorted.map(m => m.id + '_' + m.status + '_' + ((m.replies || []).length || m.replyCount || 0)).join('|');
         if (newDataHash === this._lastRenderHash && this.currentView === 'list') return;
         this._lastRenderHash = newDataHash;
 
