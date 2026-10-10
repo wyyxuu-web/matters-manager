@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>事项跟进管理系统</title>
-    <link rel="stylesheet" href="styles.css?v=9">
+    <link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
     <div class="app-container">
@@ -12,21 +12,22 @@
         <div id="login-view" class="view active">
             <div class="auth-container">
                 <div class="auth-card">
-                    <h1 class="auth-title">事项跟进管理系统</h1>
-                    <p class="auth-subtitle">请登录以继续</p>
+                    <button class="lang-toggle auth-lang" onclick="Lang.toggle()" title="Language / 语言">🌐 EN</button>
+                    <h1 class="auth-title" data-i18n="appTitle">事项跟进管理系统</h1>
+                    <p class="auth-subtitle" data-i18n="loginSubtitle">请登录以继续</p>
                     <form id="login-form" class="auth-form">
                         <div class="form-group">
-                            <label class="form-label">用户名</label>
-                            <input type="text" id="login-username" class="form-input" placeholder="请输入用户名" autocomplete="username">
+                            <label class="form-label" data-i18n="username">用户名</label>
+                            <input type="text" id="login-username" class="form-input" data-i18n-placeholder="phUsername" placeholder="请输入用户名" autocomplete="username">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">密码</label>
-                            <input type="password" id="login-password" class="form-input" placeholder="请输入密码" autocomplete="current-password">
+                            <label class="form-label" data-i18n="password">密码</label>
+                            <input type="password" id="login-password" class="form-input" data-i18n-placeholder="phPassword" placeholder="请输入密码" autocomplete="current-password">
                         </div>
                         <div id="login-error" class="auth-error" style="display:none;"></div>
-                        <button type="submit" class="btn btn-primary auth-btn">登录</button>
+                        <button type="submit" class="btn btn-primary auth-btn" data-i18n="login">登录</button>
                     </form>
-                    <p class="auth-footer">没有账号？<a href="#" id="go-register-link">注册</a></p>
+                    <p class="auth-footer"><span data-i18n="noAccount">没有账号？</span><a href="#" id="go-register-link" data-i18n="register">注册</a></p>
                 </div>
             </div>
         </div>
@@ -35,26 +36,27 @@
         <div id="register-view" class="view">
             <div class="auth-container">
                 <div class="auth-card">
-                    <h1 class="auth-title">注册新账号</h1>
-                    <p class="auth-subtitle">需要有效的邀请码才能注册</p>
+                    <button class="lang-toggle auth-lang" onclick="Lang.toggle()" title="Language / 语言">🌐 EN</button>
+                    <h1 class="auth-title" data-i18n="registerTitle">注册新账号</h1>
+                    <p class="auth-subtitle" data-i18n="registerSubtitle">需要有效的邀请码才能注册</p>
                     <form id="register-form" class="auth-form">
                         <div class="form-group">
-                            <label class="form-label">用户名</label>
-                            <input type="text" id="reg-username" class="form-input" placeholder="请设置用户名" autocomplete="username">
+                            <label class="form-label" data-i18n="username">用户名</label>
+                            <input type="text" id="reg-username" class="form-input" data-i18n-placeholder="phSetUsername" placeholder="请设置用户名" autocomplete="username">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">密码</label>
-                            <input type="password" id="reg-password" class="form-input" placeholder="请设置密码（至少4位）" autocomplete="new-password">
+                            <label class="form-label" data-i18n="password">密码</label>
+                            <input type="password" id="reg-password" class="form-input" data-i18n-placeholder="phSetPassword" placeholder="请设置密码（至少4位）" autocomplete="new-password">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">邀请码</label>
-                            <input type="text" id="reg-invite-code" class="form-input" placeholder="请输入邀请码">
+                            <label class="form-label" data-i18n="inviteCode">邀请码</label>
+                            <input type="text" id="reg-invite-code" class="form-input" data-i18n-placeholder="phInviteCode" placeholder="请输入邀请码">
                         </div>
                         <div id="register-error" class="auth-error" style="display:none;"></div>
                         <div id="register-success" class="auth-success" style="display:none;"></div>
-                        <button type="submit" class="btn btn-primary auth-btn">注册</button>
+                        <button type="submit" class="btn btn-primary auth-btn" data-i18n="register">注册</button>
                     </form>
-                    <p class="auth-footer">已有账号？<a href="#" id="go-login-link">返回登录</a></p>
+                    <p class="auth-footer"><span data-i18n="haveAccount">已有账号？</span><a href="#" id="go-login-link" data-i18n="backToLogin">返回登录</a></p>
                 </div>
             </div>
         </div>
@@ -66,12 +68,13 @@
         <header class="app-header">
             <h1 class="app-title">
                 <span class="app-title-icon">📋</span>
-                事项跟进管理系统
+                <span data-i18n="appTitle">事项跟进管理系统</span>
             </h1>
             <div style="display: flex; gap: 12px; align-items: center;">
+                <button class="btn btn-secondary lang-toggle" onclick="Lang.toggle()" title="Language / 语言">🌐 EN</button>
                 <span id="conn-indicator" title="连接状态" style="font-size:18px; cursor:default;">🟡</span>
-                <button id="refresh-btn" class="btn btn-secondary" title="刷新数据" onclick="App.refresh()">🔄 刷新</button>
-                <button id="add-btn" class="btn btn-primary">+ 添加事项</button>
+                <button id="refresh-btn" class="btn btn-secondary" data-i18n="refresh" onclick="App.refresh()">🔄 刷新</button>
+                <button id="add-btn" class="btn btn-primary" data-i18n="addMatter">+ 添加事项</button>
             </div>
         </header>
         
@@ -82,27 +85,27 @@
             
             <!-- 快捷筛选 -->
             <div class="quick-filter">
-                <button class="quick-status-btn active" data-status="all">全部</button>
-                <button class="quick-status-btn" data-status="pending">⏳ 待处理</button>
-                <button class="quick-status-btn" data-status="in_progress">🔄 进行中</button>
-                <button class="quick-status-btn" data-status="blocked">🚧 遇问题</button>
-                <button class="quick-status-btn" data-status="completed">✅ 已完成</button>
+                <button class="quick-status-btn active" data-status="all" data-i18n="statusAllBtn">全部</button>
+                <button class="quick-status-btn" data-status="pending" data-i18n="statusPendingBtn">⏳ 待处理</button>
+                <button class="quick-status-btn" data-status="in_progress" data-i18n="statusInProgressBtn">🔄 进行中</button>
+                <button class="quick-status-btn" data-status="blocked" data-i18n="statusBlockedBtn">🚧 遇问题</button>
+                <button class="quick-status-btn" data-status="completed" data-i18n="statusCompletedBtn">✅ 已完成</button>
             </div>
             
             <!-- 日期筛选 -->
             <div class="date-filter">
-                <span class="filter-label">📅 按创建日期筛选：</span>
+                <span class="filter-label" data-i18n="filterByDate">📅 按创建日期筛选：</span>
                 <input type="date" id="filter-start-date" class="filter-date-input">
-                <span class="filter-separator">至</span>
+                <span class="filter-separator" data-i18n="to">至</span>
                 <input type="date" id="filter-end-date" class="filter-date-input">
-                <button class="btn-filter-apply" onclick="App.applyDateFilter()">筛选</button>
-                <button class="btn-filter-clear" onclick="App.clearDateFilter()">清除</button>
+                <button class="btn-filter-apply" data-i18n="filter" onclick="App.applyDateFilter()">筛选</button>
+                <button class="btn-filter-clear" data-i18n="clear" onclick="App.clearDateFilter()">清除</button>
             </div>
             
             <!-- 搜索 -->
             <div class="search-bar">
-                <input type="text" id="search-input" class="search-input" placeholder="🔍 搜索事项内容...">
-                <button id="search-clear-btn" class="search-clear-btn" style="display:none" title="清除搜索">✕</button>
+                <input type="text" id="search-input" class="search-input" data-i18n-placeholder="phSearch" placeholder="🔍 搜索事项内容...">
+                <button id="search-clear-btn" class="search-clear-btn" style="display:none" data-i18n-title="clearSearch" title="清除搜索">✕</button>
             </div>
             
             <!-- 事项列表 -->
@@ -112,19 +115,20 @@
         <!-- 添加/编辑视图 -->
         <div id="add-view" class="view">
             <div class="form-container">
-                <h2 class="form-title" id="form-title">添加事项</h2>
+                <h2 class="form-title" id="form-title" data-i18n="addMatterTitle">添加事项</h2>
                 <form id="matter-form">
                     <div class="form-group">
-                        <label class="form-label">事项内容 *</label>
+                        <label class="form-label" data-i18n="matterContent">事项内容 *</label>
                         <textarea 
                             id="matter-content" 
                             class="form-textarea" 
+                            data-i18n-placeholder="phMatterContent"
                             placeholder="请输入待跟进的事项内容..."
                             required
                         ></textarea>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">创建日期 *</label>
+                        <label class="form-label" data-i18n="createdDate">创建日期 *</label>
                         <input 
                             type="date" 
                             id="matter-created-date" 
@@ -133,7 +137,7 @@
                         >
                     </div>
                     <div class="form-group">
-                        <label class="form-label">附件（图片或文件）</label>
+                        <label class="form-label" data-i18n="attachmentsLabel">附件（图片或文件）</label>
                         <div class="file-upload-container">
                             <input 
                                 type="file" 
@@ -144,15 +148,15 @@
                             >
                             <label for="matter-attachments" class="file-label">
                                 <span class="file-icon">📎</span>
-                                <span class="file-text">点击选择文件或拖拽到此处</span>
-                                <span class="file-hint">支持图片、PDF、Word、Excel、压缩包等</span>
+                                <span class="file-text" data-i18n="clickOrDrag">点击选择文件或拖拽到此处</span>
+                                <span class="file-hint" data-i18n="fileHint">支持图片、PDF、Word、Excel、压缩包等</span>
                             </label>
                         </div>
                         <div id="existing-attachments" class="attachment-preview-container"></div>
                     </div>
                     <div class="form-actions">
-                        <button type="button" id="cancel-btn" class="btn btn-secondary">取消</button>
-                        <button type="button" id="save-btn" class="btn btn-primary">保存</button>
+                        <button type="button" id="cancel-btn" class="btn btn-secondary" data-i18n="cancel">取消</button>
+                        <button type="button" id="save-btn" class="btn btn-primary" data-i18n="save">保存</button>
                     </div>
                 </form>
             </div>
@@ -161,11 +165,11 @@
         <!-- 设置视图 -->
         <div id="settings-view" class="view">
             <div class="settings-section">
-                <h3 class="settings-title">🔔 推送设置</h3>
+                <h3 class="settings-title" data-i18n="pushSettings">🔔 推送设置</h3>
                 <div class="setting-item">
                     <div>
-                        <div class="setting-label">启用定时推送</div>
-                        <div class="setting-hint">每天自动推送待跟进事项清单</div>
+                        <div class="setting-label" data-i18n="enablePush">启用定时推送</div>
+                        <div class="setting-hint" data-i18n="enablePushHint">每天自动推送待跟进事项清单</div>
                     </div>
                     <label class="toggle-switch">
                         <input type="checkbox" id="push-enabled" checked>
@@ -174,8 +178,8 @@
                 </div>
                 <div class="setting-item">
                     <div>
-                        <div class="setting-label">推送时间</div>
-                        <div class="setting-hint">每天自动推送的时间点</div>
+                        <div class="setting-label" data-i18n="pushTime">推送时间</div>
+                        <div class="setting-hint" data-i18n="pushTimeHint">每天自动推送的时间点</div>
                     </div>
                     <input 
                         type="time" 
@@ -186,51 +190,51 @@
                     >
                 </div>
                 <div class="form-actions" style="margin-top: 16px;">
-                    <button type="button" id="test-push-btn" class="btn btn-secondary">测试推送</button>
-                    <button type="button" id="save-settings-btn" class="btn btn-primary">保存设置</button>
+                    <button type="button" id="test-push-btn" class="btn btn-secondary" data-i18n="testPush">测试推送</button>
+                    <button type="button" id="save-settings-btn" class="btn btn-primary" data-i18n="saveSettings">保存设置</button>
                 </div>
             </div>
             
             <div class="settings-section">
-                <h3 class="settings-title">💾 数据管理</h3>
+                <h3 class="settings-title" data-i18n="dataManagement">💾 数据管理</h3>
                 <div class="data-actions">
-                    <button type="button" id="export-btn" class="btn-outline">📥 导出 JSON</button>
-                    <button type="button" id="export-excel-btn" class="btn-outline">📊 导出 Excel</button>
-                    <button type="button" id="export-zip-btn" class="btn-outline">📦 导出含附件ZIP</button>
-                    <button type="button" id="clear-btn" class="btn-outline btn-danger">🗑️ 清空数据</button>
+                    <button type="button" id="export-btn" class="btn-outline" data-i18n="exportJson">📥 导出 JSON</button>
+                    <button type="button" id="export-excel-btn" class="btn-outline" data-i18n="exportExcel">📊 导出 Excel</button>
+                    <button type="button" id="export-zip-btn" class="btn-outline" data-i18n="exportZip">📦 导出含附件ZIP</button>
+                    <button type="button" id="clear-btn" class="btn-outline btn-danger" data-i18n="clearData">🗑️ 清空数据</button>
                 </div>
             </div>
 
             <div class="settings-section">
-                <h3 class="settings-title">🔑 修改密码</h3>
+                <h3 class="settings-title" data-i18n="changePassword">🔑 修改密码</h3>
                 <form id="change-password-form">
                     <div class="form-group">
-                        <label class="form-label">原密码</label>
-                        <input type="password" id="cp-old-password" class="form-input" placeholder="请输入原密码" autocomplete="current-password">
+                        <label class="form-label" data-i18n="oldPassword">原密码</label>
+                        <input type="password" id="cp-old-password" class="form-input" data-i18n-placeholder="phOldPassword" placeholder="请输入原密码" autocomplete="current-password">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">新密码</label>
-                        <input type="password" id="cp-new-password" class="form-input" placeholder="请输入新密码（至少4位）" autocomplete="new-password">
+                        <label class="form-label" data-i18n="newPassword">新密码</label>
+                        <input type="password" id="cp-new-password" class="form-input" data-i18n-placeholder="phNewPassword" placeholder="请输入新密码（至少4位）" autocomplete="new-password">
                     </div>
                     <div id="cp-error" class="auth-error" style="display:none;"></div>
                     <div id="cp-success" class="auth-success" style="display:none;"></div>
                     <div class="form-actions" style="margin-top: 12px;">
-                        <button type="submit" id="change-password-btn" class="btn btn-primary">修改密码</button>
+                        <button type="submit" id="change-password-btn" class="btn btn-primary" data-i18n="changePasswordBtn">修改密码</button>
                     </div>
                 </form>
             </div>
 
             <div class="settings-section" id="invite-management-section">
-                <h3 class="settings-title">📨 邀请码管理</h3>
+                <h3 class="settings-title" data-i18n="inviteManagement">📨 邀请码管理</h3>
                 <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px;">
-                    <button type="button" id="generate-invite-btn" class="btn btn-primary">生成邀请码</button>
+                    <button type="button" id="generate-invite-btn" class="btn btn-primary" data-i18n="generateInvite">生成邀请码</button>
                     <span id="invite-result" style="font-size:14px; font-weight:500; color:var(--primary);"></span>
                 </div>
                 <div id="invite-codes-list"></div>
             </div>
 
             <div class="settings-section" id="user-management-section" style="display:none;">
-                <h3 class="settings-title">👥 用户管理</h3>
+                <h3 class="settings-title" data-i18n="userManagement">👥 用户管理</h3>
                 <div id="users-list"></div>
             </div>
         </div>
@@ -244,19 +248,20 @@
             <div class="replies-layout">
                 <!-- 左栏：回复记录 -->
                 <div class="replies-left">
-                    <div class="replies-section-title">💬 回复记录</div>
+                    <div class="replies-section-title" data-i18n="replyRecords">💬 回复记录</div>
                     <div id="reply-list" class="reply-list"></div>
                 </div>
 
                 <!-- 右栏：添加/编辑回复 -->
                 <div class="replies-right">
-                    <div class="replies-section-title" id="reply-form-title">✏️ 添加回复</div>
+                    <div class="replies-section-title" id="reply-form-title" data-i18n="addReply">✏️ 添加回复</div>
                     <form id="reply-form">
                         <div class="form-group" style="margin-bottom:10px;">
                             <input 
                                 type="text" 
                                 id="reply-author" 
                                 class="form-input" 
+                                data-i18n-placeholder="phReplyAuthor"
                                 placeholder="回复者姓名（选填）"
                             >
                         </div>
@@ -264,6 +269,7 @@
                             <textarea 
                                 id="reply-content" 
                                 class="form-textarea reply-textarea" 
+                                data-i18n-placeholder="phReplyContent"
                                 placeholder="请输入回复内容..."
                             ></textarea>
                         </div>
@@ -278,26 +284,26 @@
                                 >
                                 <label for="reply-attachments" class="file-label file-label-compact">
                                     <span class="file-icon">📎</span>
-                                    <span class="file-text">点击添加附件</span>
+                                    <span class="file-text" data-i18n="clickAddAttachment">点击添加附件</span>
                                 </label>
                             </div>
                         </div>
                         <div class="form-actions" style="flex-wrap:wrap;gap:8px;">
-                            <button type="button" id="cancel-reply-edit-btn" class="btn btn-secondary" onclick="App.cancelEditReply()" style="display: none;">取消编辑</button>
-                            <button type="submit" id="submit-reply-btn" class="btn btn-primary" style="flex:1;">提交回复</button>
+                            <button type="button" id="cancel-reply-edit-btn" class="btn btn-secondary" data-i18n="cancelEdit" onclick="App.cancelEditReply()" style="display: none;">取消编辑</button>
+                            <button type="submit" id="submit-reply-btn" class="btn btn-primary" data-i18n="submitReply" style="flex:1;">提交回复</button>
                         </div>
                     </form>
                 </div>
             </div>
             <!-- 返回按钮固定在右下角 -->
-            <button type="button" class="btn-back-fixed" onclick="App.switchView('list')" title="返回列表">← 返回列表</button>
+            <button type="button" class="btn-back-fixed" data-i18n="backToList" data-i18n-title="backToListTitle" onclick="App.switchView('list')" title="返回列表">← 返回列表</button>
         </div>
         
         <!-- 底部 Tab 导航 -->
         <div style="position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; padding: 12px; display: flex; justify-content: center; gap: 24px; align-items: center;">
-            <button class="tab-nav-btn active" data-tab="list" onclick="App.switchView('list')">📋 事项</button>
-            <button class="tab-nav-btn" data-tab="settings" onclick="App.switchView('settings')">⚙️ 设置</button>
-            <button class="tab-nav-btn" onclick="App.logout()" style="color: var(--danger); border-color: var(--danger);">🚪 退出</button>
+            <button class="tab-nav-btn active" data-tab="list" data-i18n="navMatters" onclick="App.switchView('list')">📋 事项</button>
+            <button class="tab-nav-btn" data-tab="settings" data-i18n="navSettings" onclick="App.switchView('settings')">⚙️ 设置</button>
+            <button class="tab-nav-btn" data-i18n="logout" onclick="App.logout()" style="color: var(--danger); border-color: var(--danger);">🚪 退出</button>
         </div>
         
         <!-- 底部留白（适配固定导航） -->
@@ -308,8 +314,9 @@
     <!-- 引入脚本 -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script src="data-store.js?v=9"></script>
-    <script src="scheduler.js?v=9"></script>
-    <script src="app.js?v=9"></script>
+    <script src="i18n.js?v=10"></script>
+    <script src="data-store.js?v=10"></script>
+    <script src="scheduler.js?v=10"></script>
+    <script src="app.js?v=10"></script>
 </body>
 </html>

@@ -1571,12 +1571,34 @@ body {
 }
 
 .auth-card {
+    position: relative;
     background: var(--bg-secondary);
     border-radius: var(--radius-xl);
     padding: 40px;
     box-shadow: var(--shadow-lg);
     width: 100%;
     max-width: 400px;
+}
+
+/* 语言切换按钮（登录/注册卡片内） */
+.auth-lang {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.auth-lang:hover {
+    border-color: var(--primary);
+    background: rgba(102, 126, 234, 0.08);
 }
 
 .auth-title {

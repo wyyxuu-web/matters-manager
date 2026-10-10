@@ -49,23 +49,23 @@ const App = {
         document.getElementById('stats-container').innerHTML = `
             <div class="stat-item" data-status="all" onclick="App.clickStatFilter('all')">
                 <span class="stat-number">${stats.total}</span>
-                <span class="stat-label">全部</span>
+                <span class="stat-label">${t('statusAll')}</span>
             </div>
             <div class="stat-item stat-pending" data-status="pending" onclick="App.clickStatFilter('pending')">
                 <span class="stat-number">${stats.pending}</span>
-                <span class="stat-label">待处理</span>
+                <span class="stat-label">${t('statusPending')}</span>
             </div>
             <div class="stat-item stat-progress" data-status="in_progress" onclick="App.clickStatFilter('in_progress')">
                 <span class="stat-number">${stats.in_progress}</span>
-                <span class="stat-label">进行中</span>
+                <span class="stat-label">${t('statusInProgress')}</span>
             </div>
             <div class="stat-item stat-blocked" data-status="blocked" onclick="App.clickStatFilter('blocked')">
                 <span class="stat-number">${stats.blocked}</span>
-                <span class="stat-label">遇问题</span>
+                <span class="stat-label">${t('statusBlocked')}</span>
             </div>
             <div class="stat-item stat-completed" data-status="completed" onclick="App.clickStatFilter('completed')">
                 <span class="stat-number">${stats.completed}</span>
-                <span class="stat-label">已完成</span>
+                <span class="stat-label">${t('statusCompleted')}</span>
             </div>
         `;
     },
@@ -90,8 +90,8 @@ const App = {
             container.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">📋</div>
-                    <div class="empty-text">暂无事项</div>
-                    <div class="empty-hint">点击上方「添加事项」开始</div>
+                    <div class="empty-text">${t('emptyMatters')}</div>
+                    <div class="empty-hint">${t('emptyMattersHint')}</div>
                 </div>`;
             return;
         }
@@ -132,10 +132,10 @@ const App = {
     // 渲染单个事项卡片
     renderMatterCard(matter) {
         const statusMap = {
-            pending:     { text: '待处理', cls: 'status-pending' },
-            in_progress: { text: '进行中', cls: 'status-progress' },
-            completed:   { text: '已完成', cls: 'status-completed' },
-            blocked:     { text: '遇问题', cls: 'status-blocked' }
+            pending:     { text: t('statusPending'), cls: 'status-pending' },
+            in_progress: { text: t('statusInProgress'), cls: 'status-progress' },
+            completed:   { text: t('statusCompleted'), cls: 'status-completed' },
+            blocked:     { text: t('statusBlocked'), cls: 'status-blocked' }
         };
         const st = statusMap[matter.status] || statusMap.pending;
         
@@ -151,40 +151,40 @@ const App = {
         let followupTag = '';
         if (matter.status !== 'completed') {
             if (daysSinceCreated > 7) {
-                followupTag = '<span class="followup-tag followup-urgent">⚠️ 超过一周</span>';
+                followupTag = `<span class="followup-tag followup-urgent">${t('overWeek')}</span>`;
             } else if (daysSinceCreated > 3) {
-                followupTag = '<span class="followup-tag followup-warning">⏰ 超过3天</span>';
+                followupTag = `<span class="followup-tag followup-warning">${t('over3Days')}</span>`;
             }
         }
         
-        const createdDateStr = createdDate.toLocaleDateString('zh-CN');
+        const createdDateStr = createdDate.toLocaleDateString(Lang.locale());
         const hasAttachments = matter.attachments && matter.attachments.length > 0;
         const replyCount = (matter.replies || []).length || matter.replyCount || 0;
         const hasNew = this.hasNewReply(matter);
-        const newBadge = hasNew ? '<span class="new-reply-badge" title="有新回复">●</span>' : '';
+        const newBadge = hasNew ? `<span class="new-reply-badge" title="${t('newReply')}">●</span>` : '';
 
         // 状态操作按钮
         let actionButtons = '';
         if (matter.status === 'completed') {
-            actionButtons = `<button class="action-btn uncomplete-btn" data-action="uncomplete" data-id="${matter.id}" title="标记为未完成">❌ 未完成</button>`;
+            actionButtons = `<button class="action-btn uncomplete-btn" data-action="uncomplete" data-id="${matter.id}" title="${t('markUncompleteTitle')}">${t('markUncomplete')}</button>`;
         } else {
-            actionButtons = `<button class="action-btn complete-btn" data-action="complete" data-id="${matter.id}" title="标记为已完成">✅ 完成</button>`;
+            actionButtons = `<button class="action-btn complete-btn" data-action="complete" data-id="${matter.id}" title="${t('markCompleteTitle')}">${t('markComplete')}</button>`;
             if (matter.status !== 'blocked') {
-                actionButtons += `<button class="action-btn blocked-btn" data-action="block" data-id="${matter.id}" title="标记为遇问题">🚧 遇问题</button>`;
+                actionButtons += `<button class="action-btn blocked-btn" data-action="block" data-id="${matter.id}" title="${t('markBlockedTitle')}">${t('markBlocked')}</button>`;
             }
         }
 
         return `
         <div class="matter-card ${st.cls}" data-id="${matter.id}">
-            <div class="matter-card-body" data-action="view-replies" data-id="${matter.id}" title="点击查看详情">
+            <div class="matter-card-body" data-action="view-replies" data-id="${matter.id}" title="${t('viewDetail')}">
                 <div class="matter-header">
                     <span class="matter-status ${st.cls}">${st.text}</span>
                     ${followupTag}
                     <div class="matter-header-right">
-                        <span class="matter-meta-inline">📅 ${createdDateStr}（${daysSinceCreated}天）${hasAttachments ? ' 📎' : ''} ${matter.createdBy ? `<span style="color:#999;font-size:12px;">· ${matter.createdBy}</span>` : ''}</span>
+                        <span class="matter-meta-inline">📅 ${createdDateStr}(${daysSinceCreated}${t('dayUnit')})${hasAttachments ? ' 📎' : ''} ${matter.createdBy ? `<span style="color:#999;font-size:12px;">· ${matter.createdBy}</span>` : ''}</span>
                         <div class="matter-card-actions">
-                            <button class="card-action-btn card-edit-btn" data-action="edit" data-id="${matter.id}" title="编辑">✏️ 编辑</button>
-                            <button class="card-action-btn card-delete-btn" data-action="delete" data-id="${matter.id}" title="删除">🗑️ 删除</button>
+                            <button class="card-action-btn card-edit-btn" data-action="edit" data-id="${matter.id}" title="${t('edit')}">✏️ ${t('edit')}</button>
+                            <button class="card-action-btn card-delete-btn" data-action="delete" data-id="${matter.id}" title="${t('delete')}">🗑️ ${t('delete')}</button>
                         </div>
                     </div>
                 </div>
@@ -193,7 +193,7 @@ const App = {
             </div>
             <div class="matter-footer">
                 <span class="matter-replies" data-action="view-replies" data-id="${matter.id}">
-                    💬 ${replyCount} 条回复 ${newBadge}
+                    💬 ${replyCount}${t('replyUnit')} ${newBadge}
                 </span>
                 <div class="matter-actions">
                     ${actionButtons}
@@ -220,7 +220,7 @@ const App = {
     previewImage(url) {
         const modal = document.createElement('div');
         modal.className = 'image-preview-modal';
-        modal.innerHTML = `<img src="${url}" alt="预览"><button class="modal-close" onclick="this.parentElement.remove()">&times;</button>`;
+        modal.innerHTML = `<img src="${url}" alt="${t('previewImage')}"><button class="modal-close" onclick="this.parentElement.remove()">&times;</button>`;
         document.body.appendChild(modal);
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     },
@@ -268,7 +268,7 @@ const App = {
         document.getElementById('export-excel-btn').addEventListener('click', () => this.exportExcel());
         document.getElementById('export-zip-btn').addEventListener('click', () => this.exportZip());
         document.getElementById('clear-btn').addEventListener('click', async () => {
-            if (confirm('确定要清空所有数据吗？此操作不可恢复！')) {
+            if (confirm(t('confirmClear'))) {
                 const matters = await DataStore.getMatters();
                 await Promise.all(matters.map(m => DataStore.deleteMatter(m.id)));
                 await this.render();
@@ -449,13 +449,13 @@ const App = {
         const errorEl = document.getElementById('login-error');
 
         if (!username || !password) {
-            this.showAuthError(errorEl, '请输入用户名和密码');
+            this.showAuthError(errorEl, t('errEnterUserPass'));
             return;
         }
 
         const btn = document.querySelector('#login-form .auth-btn');
         btn.disabled = true;
-        btn.textContent = '登录中...';
+        btn.textContent = t('loggingIn');
 
         const res = await DataStore.login(username, password);
         if (res.success) {
@@ -467,11 +467,11 @@ const App = {
             Scheduler.init();
             this.startPolling();
         } else {
-            this.showAuthError(errorEl, res.error || '登录失败');
+            this.showAuthError(errorEl, res.error || t('errLoginFailed'));
         }
 
         btn.disabled = false;
-        btn.textContent = '登录';
+        btn.textContent = t('login');
     },
 
     // 处理注册
@@ -486,29 +486,29 @@ const App = {
         successEl.style.display = 'none';
 
         if (!username || !password || !inviteCode) {
-            this.showAuthError(errorEl, '请填写所有字段');
+            this.showAuthError(errorEl, t('errFillAll'));
             return;
         }
         if (password.length < 4) {
-            this.showAuthError(errorEl, '密码长度至少4位');
+            this.showAuthError(errorEl, t('errPwdLen'));
             return;
         }
 
         const btn = document.querySelector('#register-form .auth-btn');
         btn.disabled = true;
-        btn.textContent = '注册中...';
+        btn.textContent = t('registering');
 
         const res = await DataStore.register(username, password, inviteCode);
         if (res.success) {
-            successEl.textContent = '注册成功！请返回登录页面登录。';
+            successEl.textContent = t('regSuccess');
             successEl.style.display = 'block';
             document.getElementById('register-form').reset();
         } else {
-            this.showAuthError(errorEl, res.error || '注册失败');
+            this.showAuthError(errorEl, res.error || t('errRegFailed'));
         }
 
         btn.disabled = false;
-        btn.textContent = '注册';
+        btn.textContent = t('register');
     },
 
     // 处理修改密码
@@ -525,30 +525,30 @@ const App = {
         successEl.style.display = 'none';
 
         if (!oldPassword || !newPassword) {
-            this.showAuthError(errorEl, '请填写原密码和新密码');
+            this.showAuthError(errorEl, t('errEnterOldNew'));
             return;
         }
         if (newPassword.length < 4) {
-            this.showAuthError(errorEl, '新密码长度至少4位');
+            this.showAuthError(errorEl, t('errNewPwdLen'));
             return;
         }
 
         const btn = document.getElementById('change-password-btn');
         btn.disabled = true;
-        btn.textContent = '修改中...';
+        btn.textContent = t('changingPassword');
 
         const res = await DataStore.changePassword(user.username, oldPassword, newPassword);
         if (res.success) {
-            successEl.textContent = '密码修改成功';
+            successEl.textContent = t('pwdChanged');
             successEl.style.display = 'block';
             document.getElementById('change-password-form').reset();
             setTimeout(() => { successEl.style.display = 'none'; }, 3000);
         } else {
-            this.showAuthError(errorEl, res.error || '修改失败');
+            this.showAuthError(errorEl, res.error || t('errChangeFailed'));
         }
 
         btn.disabled = false;
-        btn.textContent = '修改密码';
+        btn.textContent = t('changePasswordBtn');
     },
 
     // 处理生成邀请码
@@ -559,19 +559,19 @@ const App = {
         if (!user) return;
 
         btn.disabled = true;
-        btn.textContent = '生成中...';
+        btn.textContent = t('generating');
 
         const res = await DataStore.generateInviteCode(user.username, user.role);
         if (res.success) {
-            resultEl.textContent = `新邀请码：${res.data.code}`;
+            resultEl.textContent = t('newInvite', { code: res.data.code });
             // 刷新邀请码列表
             await this.renderInviteCodes();
         } else {
-            resultEl.textContent = res.error || '生成失败';
+            resultEl.textContent = res.error || t('errGenFailed');
         }
 
         btn.disabled = false;
-        btn.textContent = '生成邀请码';
+        btn.textContent = t('generateInvite');
     },
 
     // 渲染邀请码列表
@@ -580,7 +580,7 @@ const App = {
         const container = document.getElementById('invite-codes-list');
 
         if (codes.length === 0) {
-            container.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">暂无邀请码</div>';
+            container.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">' + t('noInvites') + '</div>';
             return;
         }
 
@@ -588,19 +588,19 @@ const App = {
             <table class="invite-table">
                 <thead>
                     <tr>
-                        <th>邀请码</th>
-                        <th>状态</th>
-                        <th>使用者</th>
-                        <th>使用时间</th>
+                        <th>${t('colInviteCode')}</th>
+                        <th>${t('colInviteStatus')}</th>
+                        <th>${t('colInviteUser')}</th>
+                        <th>${t('colInviteTime')}</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${codes.map(c => `
                         <tr>
                             <td><code>${c.code}</code></td>
-                            <td><span class="invite-status ${c.used_by ? 'used' : 'available'}">${c.used_by ? '已使用' : '可用'}</span></td>
+                            <td><span class="invite-status ${c.used_by ? 'used' : 'available'}">${c.used_by ? t('used') : t('available')}</span></td>
                             <td>${c.used_by || '-'}</td>
-                            <td>${c.used_at ? new Date(c.used_at).toLocaleString('zh-CN') : '-'}</td>
+                            <td>${c.used_at ? new Date(c.used_at).toLocaleString(Lang.locale()) : '-'}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -622,7 +622,7 @@ const App = {
         const container = document.getElementById('users-list');
 
         if (users.length === 0) {
-            container.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">暂无用户</div>';
+            container.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">' + t('noUsers') + '</div>';
             return;
         }
 
@@ -631,22 +631,22 @@ const App = {
             <table class="invite-table">
                 <thead>
                     <tr>
-                        <th>用户名</th>
-                        <th>角色</th>
-                        <th>注册时间</th>
-                        <th>操作</th>
+                        <th>${t('colUsername')}</th>
+                        <th>${t('colRole')}</th>
+                        <th>${t('colRegTime')}</th>
+                        <th>${t('colAction')}</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${users.map(u => `
                         <tr>
                             <td>${u.username}</td>
-                            <td><span class="role-badge role-${u.role}">${u.role === 'admin' ? '管理员' : '用户'}</span></td>
-                            <td>${u.created_at ? new Date(u.created_at).toLocaleString('zh-CN') : '-'}</td>
+                            <td><span class="role-badge role-${u.role}">${u.role === 'admin' ? t('roleAdmin') : t('roleUser')}</span></td>
+                            <td>${u.created_at ? new Date(u.created_at).toLocaleString(Lang.locale()) : '-'}</td>
                             <td>
                                 ${u.id !== currentUserId
-                                    ? `<button class="btn-outline btn-danger" style="padding:4px 12px; font-size:12px;" onclick="App.deleteUser('${u.id}', '${u.username}')">删除</button>`
-                                    : '<span style="color:var(--text-muted);font-size:12px;">当前账号</span>'
+                                    ? `<button class="btn-outline btn-danger" style="padding:4px 12px; font-size:12px;" onclick="App.deleteUser('${u.id}', '${u.username}')">${t('delete')}</button>`
+                                    : '<span style="color:var(--text-muted);font-size:12px;">' + t('currentAccount') + '</span>'
                                 }
                             </td>
                         </tr>
@@ -658,14 +658,14 @@ const App = {
 
     // 删除用户
     async deleteUser(userId, username) {
-        if (!confirm(`确定要删除用户「${username}」吗？此操作不可撤销。`)) return;
+        if (!confirm(t('confirmDeleteUser', { name: username }))) return;
 
         const res = await DataStore.deleteUser(userId);
         if (res.success) {
-            this.showToast(`用户「${username}」已删除`);
+            this.showToast(t('userDeleted', { name: username }));
             this.renderUsers();
         } else {
-            alert('删除失败：' + (res.error || '未知错误'));
+            alert(t('deleteFailed') + (res.error || t('unknownError')));
         }
     },
 
@@ -726,7 +726,7 @@ const App = {
             document.getElementById('matter-created-date').value = matter.createdAt.split('T')[0];
             // 加载已有附件
             this.loadExistingAttachments(matter.attachments || []);
-            document.getElementById('form-title').textContent = '编辑事项';
+            document.getElementById('form-title').textContent = t('editMatterTitle');
             this.switchView('add');
         }
     },
@@ -763,12 +763,12 @@ const App = {
     async saveMatter() {
         const content = document.getElementById('matter-content').value.trim();
         const createdDate = document.getElementById('matter-created-date').value;
-        if (!content) { alert('请输入事项内容'); return; }
-        if (!createdDate) { alert('请选择创建日期'); return; }
+        if (!content) { alert(t('errEnterMatterContent')); return; }
+        if (!createdDate) { alert(t('errSelectDate')); return; }
 
         const btn = document.getElementById('save-btn');
         btn.disabled = true;
-        btn.textContent = '保存中...';
+        btn.textContent = t('saving');
 
         // 收集附件
         const attachments = [];
@@ -809,7 +809,7 @@ const App = {
         }
 
         btn.disabled = false;
-        btn.textContent = '保存';
+        btn.textContent = t('save');
         this.resetForm();
         this.pendingFiles['matter-attachments-preview'] = [];
         // 清缓存，确保切回列表时拉取最新数据（含新增事项）
@@ -882,7 +882,7 @@ const App = {
             
             return `
                 <div class="attachment-preview-item" data-preview-index="${idx}">
-                    <button type="button" class="preview-remove-btn" onclick="App.removePreviewFile('${containerId}', ${idx})" title="删除">&times;</button>
+                    <button type="button" class="preview-remove-btn" onclick="App.removePreviewFile('${containerId}', ${idx})" title="${t('delete')}">&times;</button>
                     ${mediaHtml}
                     <div class="preview-info">
                         <span class="preview-name">${file.name}</span>
@@ -893,7 +893,7 @@ const App = {
         }).join('');
         
         container.innerHTML = `
-            <div class="preview-header">已选择 ${fileList.length} 个文件</div>
+            <div class="preview-header">${t('selectedFiles', { n: fileList.length })}</div>
             <div class="preview-list">${previews}</div>
         `;
     },
@@ -925,10 +925,10 @@ const App = {
 
     // 删除事项
     async deleteMatter(id) {
-        if (!confirm('⚠️ 确定要删除这个事项吗？\n\n此操作不可恢复！')) return;
+        if (!confirm(t('confirmDeleteMatter'))) return;
         const btn = document.querySelector(`[data-action="delete"][data-id="${id}"]`);
         if (btn) {
-            btn.textContent = '删除中...';
+            btn.textContent = t('deleting');
             btn.disabled = true;
         }
         await DataStore.deleteMatter(id);
@@ -991,13 +991,13 @@ const App = {
         if (!authorInput) return;
         if (user.role === 'admin') {
             authorInput.readOnly = false;
-            authorInput.placeholder = '回复者姓名（可编辑）';
+            authorInput.placeholder = t('phReplyAuthorEditable');
             if (!authorInput.value) authorInput.value = user.username;
         } else {
             authorInput.readOnly = true;
             authorInput.value = user.username;
             authorInput.style.background = '#f5f5f5';
-            authorInput.title = '名字已锁定为你的用户名';
+            authorInput.title = t('nameLocked');
         }
     },
 
@@ -1005,24 +1005,24 @@ const App = {
     renderReplies(matter) {
         const container = document.getElementById('reply-list');
         const statusMap = {
-            pending:     { text: '待处理', cls: 'status-pending' },
-            in_progress: { text: '进行中', cls: 'status-progress' },
-            completed:   { text: '已完成', cls: 'status-completed' },
-            blocked:     { text: '遇问题', cls: 'status-blocked' }
+            pending:     { text: t('statusPending'), cls: 'status-pending' },
+            in_progress: { text: t('statusInProgress'), cls: 'status-progress' },
+            completed:   { text: t('statusCompleted'), cls: 'status-completed' },
+            blocked:     { text: t('statusBlocked'), cls: 'status-blocked' }
         };
         const st = statusMap[matter.status] || statusMap.pending;
         
-        const createdDate = new Date(matter.createdAt).toLocaleDateString('zh-CN');
+        const createdDate = new Date(matter.createdAt).toLocaleDateString(Lang.locale());
         const matterAttachments = matter.attachments || [];
 
         // 状态操作按钮
         let replyStatusActions = '';
         if (matter.status === 'completed') {
-            replyStatusActions = `<button class="btn-status-action uncomplete" onclick="App.replyMarkUncomplete('${matter.id}')" title="标记为未完成">❌ 未完成</button>`;
+            replyStatusActions = `<button class="btn-status-action uncomplete" onclick="App.replyMarkUncomplete('${matter.id}')" title="${t('markUncompleteTitle')}">${t('markUncomplete')}</button>`;
         } else {
-            replyStatusActions = `<button class="btn-status-action complete" onclick="App.replyMarkComplete('${matter.id}')" title="标记为已完成">✅ 完成</button>`;
+            replyStatusActions = `<button class="btn-status-action complete" onclick="App.replyMarkComplete('${matter.id}')" title="${t('markCompleteTitle')}">${t('markComplete')}</button>`;
             if (matter.status !== 'blocked') {
-                replyStatusActions += `<button class="btn-status-action blocked" onclick="App.replyMarkBlocked('${matter.id}')" title="标记为遇问题">🚧 遇问题</button>`;
+                replyStatusActions += `<button class="btn-status-action blocked" onclick="App.replyMarkBlocked('${matter.id}')" title="${t('markBlockedTitle')}">${t('markBlocked')}</button>`;
             }
         }
 
@@ -1041,21 +1041,21 @@ const App = {
         const replies = matter.replies || [];
 
         if (replies.length === 0) {
-            container.innerHTML = `<div class="empty-replies">暂无回复，收到推送后可在此回复</div>`;
+            container.innerHTML = `<div class="empty-replies">${t('emptyReplies')}</div>`;
             return;
         }
         container.innerHTML = replies.map((r, idx) => `
             <div class="reply-item" data-reply-id="${r.id}">
                 <div class="reply-header">
                     <span class="reply-index">${idx + 1}</span>
-                    <span class="reply-author">${r.author || '匿名'}</span>
-                    <span class="reply-time">${new Date(r.createdAt).toLocaleString('zh-CN')}</span>
+                    <span class="reply-author">${r.author || t('anonymous')}</span>
+                    <span class="reply-time">${new Date(r.createdAt).toLocaleString(Lang.locale())}</span>
                 </div>
                 <div class="reply-content">${r.content}</div>
                 ${r.attachments && r.attachments.length > 0 ? this.renderReplyAttachments(r.attachments) : ''}
                 <div class="reply-footer-actions">
-                    <button class="reply-edit-btn" onclick="App.startEditReply('${r.id}')" title="编辑">✏️ 编辑</button>
-                    <button class="reply-delete-btn" onclick="App.deleteReply('${r.id}')" title="删除">🗑️ 删除</button>
+                    <button class="reply-edit-btn" onclick="App.startEditReply('${r.id}')" title="${t('edit')}">✏️ ${t('edit')}</button>
+                    <button class="reply-delete-btn" onclick="App.deleteReply('${r.id}')" title="${t('delete')}">🗑️ ${t('delete')}</button>
                 </div>
             </div>`).join('');
         
@@ -1100,10 +1100,10 @@ const App = {
         this.editingReplyId = replyId;
         document.getElementById('reply-content').value = reply.content;
         document.getElementById('reply-author').value = reply.author || '';
-        document.getElementById('submit-reply-btn').textContent = '保存编辑';
+        document.getElementById('submit-reply-btn').textContent = t('saveEdit');
         document.getElementById('cancel-reply-edit-btn').style.display = 'inline-block';
         const titleEl = document.getElementById('reply-form-title');
-        if (titleEl) titleEl.textContent = '✏️ 编辑回复';
+        if (titleEl) titleEl.textContent = t('editReplyTitle');
         document.getElementById('reply-form').scrollIntoView({ behavior: 'smooth' });
 
         // 编辑模式下也遵守权限
@@ -1117,17 +1117,17 @@ const App = {
         document.getElementById('reply-author').value = '';
         document.getElementById('reply-author').readOnly = false;
         document.getElementById('reply-author').style.background = '';
-        document.getElementById('submit-reply-btn').textContent = '提交回复';
+        document.getElementById('submit-reply-btn').textContent = t('submitReply');
         document.getElementById('cancel-reply-edit-btn').style.display = 'none';
         const titleEl = document.getElementById('reply-form-title');
-        if (titleEl) titleEl.textContent = '✏️ 添加回复';
+        if (titleEl) titleEl.textContent = t('addReply');
         // 恢复输入框权限
         this.setupReplyAuthor();
     },
     
     // 删除回复
     async deleteReply(replyId) {
-        if (!confirm('⚠️ 确定要删除这条回复吗？\n\n此操作不可恢复！')) return;
+        if (!confirm(t('confirmDeleteReply'))) return;
         await DataStore.deleteReply(this.selectedMatter.id, replyId);
         // 重新获取最新数据
         const matters = await DataStore.getMatters();
@@ -1141,8 +1141,8 @@ const App = {
     // 提交回复
     async submitReply() {
         const content = document.getElementById('reply-content').value.trim();
-        const author = document.getElementById('reply-author').value.trim() || '匿名';
-        if (!content) { alert('请输入回复内容'); return; }
+        const author = document.getElementById('reply-author').value.trim() || t('anonymous');
+        if (!content) { alert(t('errEnterReply')); return; }
         
         // 收集附件（从 pendingFiles 读取，支持删除后的最新列表）
         const attachments = [];
@@ -1189,10 +1189,10 @@ const App = {
                 this.renderReplies(updated);
                 // 在回复面板顶部的状态徽章也同步更新
                 const statusMap = {
-                    pending:     { text: '待处理', cls: 'status-pending' },
-                    in_progress: { text: '进行中', cls: 'status-progress' },
-                    completed:   { text: '已完成', cls: 'status-completed' },
-                    blocked:     { text: '遇问题', cls: 'status-blocked' }
+                    pending:     { text: t('statusPending'), cls: 'status-pending' },
+                    in_progress: { text: t('statusInProgress'), cls: 'status-progress' },
+                    completed:   { text: t('statusCompleted'), cls: 'status-completed' },
+                    blocked:     { text: t('statusBlocked'), cls: 'status-blocked' }
                 };
                 const st = statusMap[updated.status] || statusMap.pending;
                 const badge = document.getElementById('reply-status-badge');
@@ -1216,7 +1216,7 @@ const App = {
         const pushTime = document.getElementById('push-time').value;
         const pushEnabled = document.getElementById('push-enabled').checked;
         await DataStore.updateSettings({ pushTime, pushEnabled });
-        alert('设置已保存');
+        alert(t('settingsSaved'));
     },
 
     // 点击统计卡片筛选
@@ -1281,7 +1281,7 @@ const App = {
             container.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">🔍</div>
-                    <div class="empty-text">没有找到匹配的事项</div>
+                    <div class="empty-text">${t('noMatch')}</div>
                 </div>`;
             return;
         }
@@ -1347,10 +1347,10 @@ const App = {
         
         // 准备表头
         const statusMap = {
-            pending: '待处理',
-            in_progress: '进行中',
-            completed: '已完成',
-            blocked: '遇问题'
+            pending: t('statusPending'),
+            in_progress: t('statusInProgress'),
+            completed: t('statusCompleted'),
+            blocked: t('statusBlocked')
         };
         
         // 准备数据
@@ -1365,7 +1365,7 @@ const App = {
                 idx + 1,
                 m.content,
                 statusMap[m.status] || m.status,
-                created.toLocaleDateString('zh-CN'),
+                created.toLocaleDateString(Lang.locale()),
                 days,
                 replyCount,
                 lastReply ? `${lastReply.author}: ${lastReply.content.substring(0, 50)}...` : ''
@@ -1374,7 +1374,7 @@ const App = {
         
         // 添加表头
         const tableData = [
-            ['序号', '事项内容', '状态', '创建日期', '已跟进天数', '回复数', '最新回复'],
+            [t('colIndex'), t('colContent'), t('colStatus'), t('colCreated'), t('colDays'), t('colReplyCount'), t('colLastReply')],
             ...data
         ];
         
@@ -1394,10 +1394,10 @@ const App = {
         
         // 创建工作簿
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, '事项列表');
+        XLSX.utils.book_append_sheet(wb, ws, t('sheetItems'));
         
         // 导出文件
-        const fileName = `事项列表_${new Date().toISOString().split('T')[0]}.xlsx`;
+        const fileName = `${t('fileXlsxPrefix')}_${new Date().toISOString().split('T')[0]}.xlsx`;
         XLSX.writeFile(wb, fileName);
     },
 
@@ -1405,7 +1405,7 @@ const App = {
     async exportZip() {
         const btn = document.getElementById('export-zip-btn');
         const originalText = btn.textContent;
-        btn.textContent = '打包中...';
+        btn.textContent = t('packaging');
         btn.disabled = true;
 
         try {
@@ -1414,12 +1414,12 @@ const App = {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const statusMap = {
-                pending: '待处理', in_progress: '进行中',
-                completed: '已完成', blocked: '遇问题'
+                pending: t('statusPending'), in_progress: t('statusInProgress'),
+                completed: t('statusCompleted'), blocked: t('statusBlocked')
             };
 
             // 按事项分组，创建附件目录
-            const attachmentsFolder = zip.folder('附件');
+            const attachmentsFolder = zip.folder(t('folderAttachments'));
 
             // 准备 Excel 数据
             const data = matters.map((m, idx) => {
@@ -1445,7 +1445,7 @@ const App = {
                 (m.attachments || []).forEach((att, attIdx) => {
                     if (att.data) {
                         const ext = att.name.split('.').pop() || 'file';
-                        const fileName = `事项附件_${attIdx + 1}_${att.name}`;
+                        const fileName = `${t('matterAttachmentPrefix')}_${attIdx + 1}_${att.name}`;
                         matterFolder.file(fileName, att.data.split(',')[1] || att.data, { base64: true });
                     }
                 });
@@ -1454,7 +1454,7 @@ const App = {
                 (m.replies || []).forEach((r, rIdx) => {
                     (r.attachments || []).forEach((att, attIdx) => {
                         if (att.data) {
-                            const fileName = `回复${rIdx + 1}_附件${attIdx + 1}_${att.name}`;
+                            const fileName = `${t('replyAttachmentPrefix', { idx: rIdx + 1 })}${attIdx + 1}_${att.name}`;
                             matterFolder.file(fileName, att.data.split(',')[1] || att.data, { base64: true });
                         }
                     });
@@ -1464,17 +1464,17 @@ const App = {
                     idx + 1,
                     m.content,
                     statusMap[m.status] || m.status,
-                    created.toLocaleDateString('zh-CN'),
+                    created.toLocaleDateString(Lang.locale()),
                     days,
                     replyCount,
                     lastReply ? `${lastReply.author}: ${lastReply.content.substring(0, 50)}...` : '',
-                    allAttNames.join('、')
+                    allAttNames.join(t('fileListSeparator'))
                 ];
             });
 
             // 创建 Excel 工作表
             const tableData = [
-                ['序号', '事项内容', '状态', '创建日期', '已跟进天数', '回复数', '最新回复', '附件列表'],
+                [t('colIndex'), t('colContent'), t('colStatus'), t('colCreated'), t('colDays'), t('colReplyCount'), t('colLastReply'), t('colAttachments')],
                 ...data
             ];
             const ws = XLSX.utils.aoa_to_sheet(tableData);
@@ -1484,23 +1484,23 @@ const App = {
                 { wch: 40 }, { wch: 30 }
             ];
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, '事项列表');
+            XLSX.utils.book_append_sheet(wb, ws, t('sheetItems'));
 
             // Excel 加入 ZIP
             const excelBuf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            zip.file(`事项列表_${new Date().toISOString().split('T')[0]}.xlsx`, excelBuf);
+            zip.file(`${t('fileXlsxPrefix')}_${new Date().toISOString().split('T')[0]}.xlsx`, excelBuf);
 
             // 生成 ZIP 并下载
             const zipBlob = await zip.generateAsync({ type: 'blob' });
             const url = URL.createObjectURL(zipBlob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `事项导出_${new Date().toISOString().split('T')[0]}.zip`;
+            a.download = `${t('fileZipPrefix')}_${new Date().toISOString().split('T')[0]}.zip`;
             a.click();
             URL.revokeObjectURL(url);
         } catch (e) {
             console.error('导出ZIP失败:', e);
-            alert('导出失败: ' + e.message);
+            alert(t('exportFailed') + e.message);
         } finally {
             btn.textContent = originalText;
             btn.disabled = false;
@@ -1541,8 +1541,8 @@ const App = {
         if (ok) await this.render();
         const btn = document.getElementById('refresh-btn');
         if (btn) {
-            btn.textContent = ok ? '✓ 已刷新' : '⚠️ 无连接';
-            setTimeout(() => { btn.textContent = '🔄 刷新'; }, 1500);
+            btn.textContent = ok ? t('refreshed') : t('offlineShort');
+            setTimeout(() => { btn.textContent = t('refresh'); }, 1500);
         }
     },
 
@@ -1578,7 +1578,7 @@ const App = {
         const indicator = document.getElementById('conn-indicator');
         if (indicator) {
             indicator.textContent = connected ? '🟢' : '🔴';
-            indicator.title = connected ? '已连接' : '无连接';
+            indicator.title = connected ? t('connected') : t('disconnected');
         }
     },
 
@@ -1631,7 +1631,7 @@ const App = {
     tryNotify(message) {
         if (!('Notification' in window)) return;
         if (Notification.permission === 'granted') {
-            new Notification('事项跟进提醒', { body: message, icon: '📋' });
+            new Notification(t('notificationTitle'), { body: message, icon: '📋' });
         } else if (Notification.permission !== 'denied') {
             Notification.requestPermission();
         }
@@ -1648,11 +1648,11 @@ const App = {
         try {
             const res = await fetch('/api/stats', { cache: 'no-store' });
             if (res.ok) {
-                if (indicator) { indicator.textContent = '🟢'; indicator.title = '已连接'; }
+                if (indicator) { indicator.textContent = '🟢'; indicator.title = t('connected'); }
                 return true;
             }
         } catch (e) {}
-        if (indicator) { indicator.textContent = '🔴'; indicator.title = '服务器未响应，数据可能不是最新'; }
+        if (indicator) { indicator.textContent = '🔴'; indicator.title = t('serverNoResponse'); }
         return false;
     },
 
@@ -1660,13 +1660,41 @@ const App = {
     resetForm() {
         document.getElementById('matter-form').reset();
         this.editingMatter = null;
-        document.getElementById('form-title').textContent = '添加事项';
+        document.getElementById('form-title').textContent = t('addMatterTitle');
         document.getElementById('existing-attachments').innerHTML = '';
         // 清除附件预览
         const previewContainer = document.getElementById('matter-attachments-preview');
         if (previewContainer) previewContainer.innerHTML = '';
         document.getElementById('matter-created-date').value = new Date().toISOString().split('T')[0];
+    },
+
+    // 语言切换后重渲染动态内容
+    onLangChange() {
+        if (this.currentView === 'list') {
+            this._lastRenderHash = null;
+            this.renderStats();
+            this.filterByStatus(this.currentStatusFilter);
+        } else if (this.currentView === 'settings') {
+            this.renderInviteCodes();
+            this.renderUsers();
+        } else if (this.currentView === 'replies' && this.selectedMatter) {
+            this.renderReplies(this.selectedMatter);
+        }
+
+        // 新增/编辑事项表单标题（data-i18n 会重置为“添加事项”，编辑态需纠正）
+        if (this.currentView === 'add') {
+            const titleEl = document.getElementById('form-title');
+            if (titleEl) titleEl.textContent = this.editingMatter ? t('editMatterTitle') : t('addMatterTitle');
+        }
+
+        // 回复编辑态文案
+        if (this.editingReplyId) {
+            const rt = document.getElementById('reply-form-title');
+            if (rt) rt.textContent = t('editReplyTitle');
+            const sub = document.getElementById('submit-reply-btn');
+            if (sub) sub.textContent = t('saveEdit');
+        }
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => { App.init(); });
+document.addEventListener('DOMContentLoaded', () => { Lang.init(); App.init(); });
