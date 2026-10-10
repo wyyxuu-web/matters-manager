@@ -750,10 +750,10 @@ body {
     background: var(--bg-tertiary);
 }
 
-/* ❌ 未完成按钮 - 白色底色 */
+/* ↩️ 未完成按钮 - 灰色文字 */
 .action-btn.uncomplete-btn {
     background: white;
-    color: #991b1b;
+    color: var(--text-secondary);
     font-weight: 500;
     gap: 4px;
     border: 1px solid var(--border-color);
@@ -761,8 +761,9 @@ body {
     padding: 0 10px;
 }
 .action-btn.uncomplete-btn:hover {
-    background: #fee2e2;
-    border-color: #ef4444;
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
 }
 
 .action-btn.delete-btn:hover {
@@ -1079,11 +1080,12 @@ body {
 
 .btn-status-action.uncomplete {
     background: white;
-    color: #991b1b;
+    color: var(--text-secondary);
     border: 1px solid var(--border-color);
 }
 .btn-status-action.uncomplete:hover {
-    background: #fecaca;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
 }
 
 /* 两栏容器 - 减小高度，给顶部更多空间 */
